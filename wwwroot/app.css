@@ -357,7 +357,30 @@ table.grid td { font-variant-numeric: tabular-nums; }
 
 .choice button.on { border-color: var(--accent); background: var(--accent); color: var(--accent-text); }
 
-.amounts { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .5rem; }
+.amounts, .nudges { display: flex; gap: .4rem; flex-wrap: wrap; margin-top: .5rem; }
+.nudges .chip { padding: .55rem .7rem; font-size: .85rem; font-variant-numeric: tabular-nums; }
+.hint-line { margin-top: .45rem; color: var(--text-dim); font-size: .82rem; }
+
+.kinds { display: grid; grid-template-columns: repeat(3, 1fr); gap: .4rem; }
+
+.kind {
+    appearance: none;
+    border: 2px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text);
+    border-radius: 14px;
+    padding: .6rem .25rem;
+    font-size: .78rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .25rem;
+}
+
+.kind .ico { font-size: 1.5rem; }
+.kind.on { border-color: var(--accent); background: var(--surface); }
 
 .btn {
     appearance: none;
@@ -374,6 +397,16 @@ table.grid td { font-variant-numeric: tabular-nums; }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
 .btn.danger { color: var(--danger); }
 .btn.block { width: 100%; }
+
+.btn.subtle {
+    margin-top: .75rem;
+    background: transparent;
+    border-style: dashed;
+    color: var(--text-dim);
+    font-weight: 600;
+}
+
+.btn.subtle:hover { color: var(--text); }
 a.btn { display: inline-block; text-decoration: none; }
 .row-btns { display: flex; gap: .5rem; margin-top: 1rem; }
 .row-btns .btn { flex: 1; }

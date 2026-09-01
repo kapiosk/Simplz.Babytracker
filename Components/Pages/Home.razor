@@ -49,6 +49,13 @@
     </button>
 </div>
 
+@if (running is not null)
+{
+    <button class="btn block subtle" @onclick="() => editing = running">
+        Started at @Display.ToLocal(running.StartUtc).ToString("HH:mm") — adjust
+    </button>
+}
+
 <div class="section-title">
     <span>Recent</span>
     <a href="report">See report</a>
@@ -57,6 +64,8 @@
 <div class="card">
     <EventList Events="recent" OnEdit="e => editing = e" EmptyText="Tap a button above to log the first entry." />
 </div>
+
+<button class="btn block subtle" @onclick="AddEarlier">+ Add an entry from earlier</button>
 
 @if (showBottle)
 {
@@ -171,9 +180,25 @@
         Toast(entry.AmountMl is > 0 ? $"Bottle · {entry.AmountMl} ml" : "Bottle logged");
     }
 
+    /// <summary>Opens the editor on a blank entry, pre-filled as a feed that just finished.</summary>
+    private void AddEarlier() => editing = new BabyEvent
+    {
+        Kind = EventKind.BreastFeed,
+        StartUtc = DateTime.UtcNow.AddMinutes(-15),
+        EndUtc = DateTime.UtcNow
+    };
+
     private async Task SaveEdit(BabyEvent updated)
     {
         editing = null;
+
+        if (updated.Id == 0)
+        {
+            await Events.AddAsync(updated);
+            Toast("Added");
+            return;
+        }
+
         await Events.UpdateAsync(updated);
         Toast("Saved");
     }

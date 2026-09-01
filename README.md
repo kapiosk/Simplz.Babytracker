@@ -13,8 +13,16 @@ Data lives in a single SQLite file, and the whole thing ships as one Docker cont
 - **Bottle** — opens a sheet: breast milk or formula, amount in ml (presets or free text), optional note.
 - **Poop**, **Urine**, **Vomit** — one tap each, logged at the current time.
 
-Under the buttons is the recent log; the pencil on any row opens an editor where the type, the time
-(start *and* stop for feeds), the milk, the amount and the notes can be corrected, or the entry deleted.
+Nothing has to be logged as it happens. Under the buttons is the recent log; the pencil on any row opens
+an editor where the type, the times, the milk, the amount and the notes can be corrected, or the entry
+deleted. Every time field has −1h/−15m/−5m/+5m/+15m/+1h nudges and a *Now* button next to the picker, so
+correcting a feed to "actually, it started twenty minutes ago" is two taps.
+
+- **Add an entry from earlier** (under the log on both pages) creates an entry after the fact, pre-filled
+  as a feed that started 15 minutes ago and has just ended — including both the start *and* the stop time.
+- A feed that is currently running shows **Started at HH:MM — adjust** under the buttons: nudge the start
+  time backwards and the live timer follows, without stopping the feed.
+- *Still feeding* on the stop field clears it again, turning a finished feed back into a running one.
 
 **Report** (`/report`) — today / 7 days / 30 days / custom range, with:
 

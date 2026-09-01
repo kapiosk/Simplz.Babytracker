@@ -1,0 +1,53 @@
+@using System.Globalization
+
+@* A date/time picker with one-tap nudges, because entries are usually logged after the fact. *@
+<div class="field">
+    <label for="@Id">@Label</label>
+    <input id="@Id" type="datetime-local" value="@Value"
+           @onchange="e => Set(e.Value?.ToString() ?? Value)" />
+
+    <div class="nudges">
+        <button type="button" class="chip" @onclick="() => Nudge(-60)">−1h</button>
+        <button type="button" class="chip" @onclick="() => Nudge(-15)">−15m</button>
+        <button type="button" class="chip" @onclick="() => Nudge(-5)">−5m</button>
+        <button type="button" class="chip" @onclick="() => Nudge(5)">+5m</button>
+        <button type="button" class="chip" @onclick="() => Nudge(15)">+15m</button>
+        <button type="button" class="chip" @onclick="() => Nudge(60)">+1h</button>
+        <button type="button" class="chip" @onclick="SetNow">Now</button>
+        @if (!string.IsNullOrEmpty(ClearLabel))
+        {
+            <button type="button" class="chip @(string.IsNullOrEmpty(Value) ? "on" : "")"
+                    @onclick="() => Set(string.Empty)">@ClearLabel</button>
+        }
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Hint))
+    {
+        <div class="hint-line">@Hint</div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Id { get; set; } = "";
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    [Parameter] public string Value { get; set; } = "";
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+
+    /// <summary>When set, an extra chip empties the field (used for "still feeding").</summary>
+    [Parameter] public string? ClearLabel { get; set; }
+
+    [Parameter] public string? Hint { get; set; }
+
+    public const string Format = "yyyy-MM-ddTHH:mm";
+
+    public static string ToText(DateTime local) => local.ToString(Format, CultureInfo.InvariantCulture);
+
+    public static DateTime? Parse(string? text) =>
+        DateTime.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.None, out var value) ? value : null;
+
+    private Task Set(string value) => ValueChanged.InvokeAsync(value);
+
+    private Task SetNow() => Set(ToText(DateTime.Now));
+
+    private Task Nudge(int minutes) => Set(ToText((Parse(Value) ?? DateTime.Now).AddMinutes(minutes)));
+}

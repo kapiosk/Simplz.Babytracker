@@ -104,6 +104,8 @@
     }
 </div>
 
+<button class="btn block subtle" @onclick="AddEarlier">+ Add an entry from earlier</button>
+
 @if (editing is not null)
 {
     <EditEventDialog Event="editing" OnCancel="() => editing = null" OnSave="SaveEdit" OnDelete="DeleteEvent" />
@@ -203,9 +205,23 @@
         StateHasChanged();
     });
 
+    private void AddEarlier() => editing = new BabyEvent
+    {
+        Kind = EventKind.BreastFeed,
+        StartUtc = DateTime.UtcNow.AddMinutes(-15),
+        EndUtc = DateTime.UtcNow
+    };
+
     private async Task SaveEdit(BabyEvent updated)
     {
         editing = null;
+
+        if (updated.Id == 0)
+        {
+            await Events.AddAsync(updated);
+            return;
+        }
+
         await Events.UpdateAsync(updated);
     }
 

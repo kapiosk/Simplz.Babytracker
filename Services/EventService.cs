@@ -77,6 +77,17 @@ public class EventService(IDbContextFactory<AppDbContext> factory)
         return ev;
     }
 
+    /// <summary>Adds an entry that happened earlier and is being logged after the fact.</summary>
+    public async Task<BabyEvent> AddAsync(BabyEvent ev, CancellationToken ct = default)
+    {
+        ev.Id = 0;
+        await using var db = await factory.CreateDbContextAsync(ct);
+        db.Events.Add(ev);
+        await db.SaveChangesAsync(ct);
+        NotifyChanged();
+        return ev;
+    }
+
     public async Task<List<BabyEvent>> GetRecentAsync(int count = 20, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);

@@ -1,31 +1,27 @@
-@using System.Globalization
 <div class="sheet-backdrop" @onclick="() => OnCancel.InvokeAsync()">
     <div class="sheet" @onclick:stopPropagation="true">
-        <h2><span class="ico @Display.Css(kind)"><Icon Name="@Icon.For(kind)" /></span> Edit entry</h2>
+        <h2><span class="ico @Display.Css(kind)"><Icon Name="@Icon.For(kind)" /></span> @(IsNew ? "Add entry" : "Edit entry")</h2>
 
         <div class="field">
-            <label for="kind">Type</label>
-            <select id="kind" @bind="kind">
+            <label>Type</label>
+            <div class="kinds">
                 @foreach (var k in Enum.GetValues<EventKind>())
                 {
-                    <option value="@k">@Display.Label(k)</option>
+                    <button type="button" class="kind @Display.Css(k) @(kind == k ? "on" : "")" @onclick="() => kind = k">
+                        <span class="ico @Display.Css(k)"><Icon Name="@Icon.For(k)" /></span>
+                        @Display.Label(k)
+                    </button>
                 }
-            </select>
+            </div>
         </div>
 
-        <div class="field">
-            <label for="start">@(kind == EventKind.BreastFeed ? "Started" : "Time")</label>
-            <input id="start" type="datetime-local" value="@startText"
-                   @onchange="e => startText = e.Value?.ToString() ?? startText" />
-        </div>
+        <TimeField Id="start" Label="@(kind == EventKind.BreastFeed ? "Started" : "Time")"
+                   Value="@startText" ValueChanged="v => startText = v" />
 
         @if (kind == EventKind.BreastFeed)
         {
-            <div class="field">
-                <label for="end">Stopped (leave empty if still feeding)</label>
-                <input id="end" type="datetime-local" value="@endText"
-                       @onchange="e => endText = e.Value?.ToString() ?? string.Empty" />
-            </div>
+            <TimeField Id="end" Label="Stopped" Value="@endText" ValueChanged="v => endText = v"
+                       ClearLabel="Still feeding" Hint="@DurationHint" />
         }
 
         @if (kind == EventKind.BottleFeed)
@@ -61,7 +57,10 @@
         else
         {
             <div class="row-btns">
-                <button type="button" class="btn danger" @onclick="() => confirmDelete = true">Delete</button>
+                @if (!IsNew)
+                {
+                    <button type="button" class="btn danger" @onclick="() => confirmDelete = true">Delete</button>
+                }
                 <button type="button" class="btn" @onclick="() => OnCancel.InvokeAsync()">Cancel</button>
                 <button type="button" class="btn primary" @onclick="Save">Save</button>
             </div>
@@ -82,29 +81,56 @@
     private int? amount;
     private string? notes;
     private bool confirmDelete;
+    private int loadedId = -1;
+
+    private bool IsNew => Event.Id == 0;
+
+    private string DurationHint
+    {
+        get
+        {
+            var start = TimeField.Parse(startText);
+            var end = TimeField.Parse(endText);
+
+            if (start is null)
+            {
+                return "";
+            }
+
+            if (end is null)
+            {
+                return "Still feeding — no stop time yet.";
+            }
+
+            var span = end.Value - start.Value;
+            return span < TimeSpan.Zero
+                ? "The stop time is before the start time."
+                : $"Duration: {Display.Duration(span)}";
+        }
+    }
 
     protected override void OnParametersSet()
     {
+        // Reload only when a different entry is opened, so the form is not reset mid-edit.
+        if (Event.Id == loadedId && loadedId != -1)
+        {
+            return;
+        }
+
+        loadedId = Event.Id;
         kind = Event.Kind;
-        startText = Format(Display.ToLocal(Event.StartUtc));
-        endText = Event.EndUtc is null ? "" : Format(Display.ToLocal(Event.EndUtc.Value));
+        startText = TimeField.ToText(Display.ToLocal(Event.StartUtc));
+        endText = Event.EndUtc is null ? "" : TimeField.ToText(Display.ToLocal(Event.EndUtc.Value));
         milk = Event.Milk ?? MilkKind.BreastMilk;
         amount = Event.AmountMl;
         notes = Event.Notes;
         confirmDelete = false;
     }
 
-    // The framework's datetime-local binding round-trips through a format the browser does not
-    // always echo back, so these two fields are bound by hand.
-    private static string Format(DateTime local) => local.ToString("yyyy-MM-ddTHH:mm", CultureInfo.InvariantCulture);
-
-    private static DateTime? Parse(string? text) =>
-        DateTime.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.None, out var value) ? value : null;
-
     private Task Save()
     {
-        var startLocal = Parse(startText) ?? Display.ToLocal(Event.StartUtc);
-        var endLocal = Parse(endText);
+        var startLocal = TimeField.Parse(startText) ?? Display.ToLocal(Event.StartUtc);
+        var endLocal = TimeField.Parse(endText);
 
         var updated = new BabyEvent
         {
