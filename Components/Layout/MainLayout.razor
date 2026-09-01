@@ -1,0 +1,29 @@
+@inherits LayoutComponentBase
+
+<header class="app-header">
+    <div>
+        <div class="title">Baby Tracker</div>
+        <div class="sub">@DateTime.Now.ToString("dddd d MMMM")</div>
+    </div>
+</header>
+
+<main class="app-main">
+    @Body
+</main>
+
+<nav class="app-nav">
+    <NavLink href="" Match="NavLinkMatch.All">
+        <span class="ico"><Icon Name="timer" /></span>
+        Track
+    </NavLink>
+    <NavLink href="report">
+        <span class="ico"><Icon Name="chart" /></span>
+        Report
+    </NavLink>
+</nav>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>

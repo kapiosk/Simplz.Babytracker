@@ -1,0 +1,50 @@
+<div class="sheet-backdrop" @onclick="() => OnCancel.InvokeAsync()">
+    <div class="sheet" @onclick:stopPropagation="true">
+        <h2><span class="ico bottle"><Icon Name="bottle" /></span> Bottle feed</h2>
+
+        <div class="field">
+            <label>What's in the bottle?</label>
+            <div class="choice">
+                <button type="button" class="@(milk == MilkKind.BreastMilk ? "on" : "")"
+                        @onclick="() => milk = MilkKind.BreastMilk">Breast milk</button>
+                <button type="button" class="@(milk == MilkKind.Formula ? "on" : "")"
+                        @onclick="() => milk = MilkKind.Formula">Formula</button>
+            </div>
+        </div>
+
+        <div class="field">
+            <label for="amount">Amount (ml)</label>
+            <input id="amount" type="number" inputmode="numeric" min="0" max="1000" step="5" @bind="amount" />
+            <div class="amounts">
+                @foreach (var preset in new[] { 20, 40, 60, 90, 120, 150 })
+                {
+                    <button type="button" class="chip @(amount == preset ? "on" : "")"
+                            @onclick="() => amount = preset">@preset</button>
+                }
+            </div>
+        </div>
+
+        <div class="field">
+            <label for="bottle-notes">Notes (optional)</label>
+            <input id="bottle-notes" type="text" maxlength="500" @bind="notes" />
+        </div>
+
+        <div class="row-btns">
+            <button type="button" class="btn" @onclick="() => OnCancel.InvokeAsync()">Cancel</button>
+            <button type="button" class="btn primary" @onclick="Save">Save</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback<BottleEntry> OnSave { get; set; }
+
+    private MilkKind milk = MilkKind.BreastMilk;
+    private int? amount;
+    private string? notes;
+
+    private Task Save() => OnSave.InvokeAsync(new BottleEntry(milk, amount, string.IsNullOrWhiteSpace(notes) ? null : notes.Trim()));
+
+    public record BottleEntry(MilkKind Milk, int? AmountMl, string? Notes);
+}

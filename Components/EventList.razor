@@ -1,0 +1,48 @@
+@if (Events.Count == 0)
+{
+    <div class="empty">@EmptyText</div>
+}
+else
+{
+    <ul class="events">
+        @foreach (var e in Events)
+        {
+            <li class="event" @key="e.Id">
+                <span class="ico @Display.Css(e.Kind)"><Icon Name="@Icon.For(e.Kind)" /></span>
+                <div class="body">
+                    <div class="name">@Display.Label(e)</div>
+                    <div class="meta">@Meta(e)</div>
+                    @if (!string.IsNullOrWhiteSpace(e.Notes))
+                    {
+                        <div class="notes">@e.Notes</div>
+                    }
+                </div>
+                <button class="icon-btn" title="Edit" aria-label="Edit @Display.Label(e)"
+                        @onclick="() => OnEdit.InvokeAsync(e)"><Icon Name="pencil" /></button>
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<BabyEvent> Events { get; set; } = [];
+    [Parameter] public EventCallback<BabyEvent> OnEdit { get; set; }
+    [Parameter] public bool ShowDate { get; set; }
+    [Parameter] public string EmptyText { get; set; } = "Nothing logged yet.";
+
+    private string Meta(BabyEvent e)
+    {
+        var local = Display.ToLocal(e.StartUtc);
+        var when = ShowDate ? local.ToString("ddd d MMM, HH:mm") : $"{local:HH:mm} · {Display.Ago(e.StartUtc)}";
+
+        var extra = e.Kind switch
+        {
+            EventKind.BreastFeed when e.EndUtc is null => "still feeding",
+            EventKind.BreastFeed => Display.Duration(e.Duration!.Value),
+            EventKind.BottleFeed when e.AmountMl is > 0 => $"{e.AmountMl} ml",
+            _ => null
+        };
+
+        return extra is null ? when : $"{when} · {extra}";
+    }
+}

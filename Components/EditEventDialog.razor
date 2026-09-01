@@ -1,0 +1,127 @@
+@using System.Globalization
+<div class="sheet-backdrop" @onclick="() => OnCancel.InvokeAsync()">
+    <div class="sheet" @onclick:stopPropagation="true">
+        <h2><span class="ico @Display.Css(kind)"><Icon Name="@Icon.For(kind)" /></span> Edit entry</h2>
+
+        <div class="field">
+            <label for="kind">Type</label>
+            <select id="kind" @bind="kind">
+                @foreach (var k in Enum.GetValues<EventKind>())
+                {
+                    <option value="@k">@Display.Label(k)</option>
+                }
+            </select>
+        </div>
+
+        <div class="field">
+            <label for="start">@(kind == EventKind.BreastFeed ? "Started" : "Time")</label>
+            <input id="start" type="datetime-local" value="@startText"
+                   @onchange="e => startText = e.Value?.ToString() ?? startText" />
+        </div>
+
+        @if (kind == EventKind.BreastFeed)
+        {
+            <div class="field">
+                <label for="end">Stopped (leave empty if still feeding)</label>
+                <input id="end" type="datetime-local" value="@endText"
+                       @onchange="e => endText = e.Value?.ToString() ?? string.Empty" />
+            </div>
+        }
+
+        @if (kind == EventKind.BottleFeed)
+        {
+            <div class="field">
+                <label>What's in the bottle?</label>
+                <div class="choice">
+                    <button type="button" class="@(milk == MilkKind.BreastMilk ? "on" : "")"
+                            @onclick="() => milk = MilkKind.BreastMilk">Breast milk</button>
+                    <button type="button" class="@(milk == MilkKind.Formula ? "on" : "")"
+                            @onclick="() => milk = MilkKind.Formula">Formula</button>
+                </div>
+            </div>
+
+            <div class="field">
+                <label for="edit-amount">Amount (ml)</label>
+                <input id="edit-amount" type="number" inputmode="numeric" min="0" max="1000" step="5" @bind="amount" />
+            </div>
+        }
+
+        <div class="field">
+            <label for="edit-notes">Notes</label>
+            <input id="edit-notes" type="text" maxlength="500" @bind="notes" />
+        </div>
+
+        @if (confirmDelete)
+        {
+            <div class="row-btns">
+                <button type="button" class="btn" @onclick="() => confirmDelete = false">Keep</button>
+                <button type="button" class="btn danger" @onclick="() => OnDelete.InvokeAsync(Event.Id)">Delete for good</button>
+            </div>
+        }
+        else
+        {
+            <div class="row-btns">
+                <button type="button" class="btn danger" @onclick="() => confirmDelete = true">Delete</button>
+                <button type="button" class="btn" @onclick="() => OnCancel.InvokeAsync()">Cancel</button>
+                <button type="button" class="btn primary" @onclick="Save">Save</button>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public BabyEvent Event { get; set; } = default!;
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback<BabyEvent> OnSave { get; set; }
+    [Parameter] public EventCallback<int> OnDelete { get; set; }
+
+    private EventKind kind;
+    private string startText = "";
+    private string endText = "";
+    private MilkKind milk = MilkKind.BreastMilk;
+    private int? amount;
+    private string? notes;
+    private bool confirmDelete;
+
+    protected override void OnParametersSet()
+    {
+        kind = Event.Kind;
+        startText = Format(Display.ToLocal(Event.StartUtc));
+        endText = Event.EndUtc is null ? "" : Format(Display.ToLocal(Event.EndUtc.Value));
+        milk = Event.Milk ?? MilkKind.BreastMilk;
+        amount = Event.AmountMl;
+        notes = Event.Notes;
+        confirmDelete = false;
+    }
+
+    // The framework's datetime-local binding round-trips through a format the browser does not
+    // always echo back, so these two fields are bound by hand.
+    private static string Format(DateTime local) => local.ToString("yyyy-MM-ddTHH:mm", CultureInfo.InvariantCulture);
+
+    private static DateTime? Parse(string? text) =>
+        DateTime.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.None, out var value) ? value : null;
+
+    private Task Save()
+    {
+        var startLocal = Parse(startText) ?? Display.ToLocal(Event.StartUtc);
+        var endLocal = Parse(endText);
+
+        var updated = new BabyEvent
+        {
+            Id = Event.Id,
+            Kind = kind,
+            StartUtc = Display.ToUtc(startLocal),
+            EndUtc = kind == EventKind.BreastFeed && endLocal is not null ? Display.ToUtc(endLocal.Value) : null,
+            Milk = kind == EventKind.BottleFeed ? milk : null,
+            AmountMl = kind == EventKind.BottleFeed ? amount : null,
+            Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim()
+        };
+
+        if (updated.EndUtc < updated.StartUtc)
+        {
+            updated.EndUtc = updated.StartUtc;
+        }
+
+        return OnSave.InvokeAsync(updated);
+    }
+}

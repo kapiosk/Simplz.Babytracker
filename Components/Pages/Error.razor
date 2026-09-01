@@ -1,0 +1,25 @@
+@page "/Error"
+@using System.Diagnostics
+
+<PageTitle>Error · Baby Tracker</PageTitle>
+
+<h1>Something went wrong</h1>
+<p>The entry may not have been saved — check the recent list before logging it again.</p>
+
+@if (ShowRequestId)
+{
+    <p><strong>Request ID:</strong> <code>@RequestId</code></p>
+}
+
+<a class="btn primary" href="">Back to tracking</a>
+
+@code {
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private string? RequestId { get; set; }
+    private bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
+
+    protected override void OnInitialized() =>
+        RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
+}

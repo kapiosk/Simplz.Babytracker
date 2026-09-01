@@ -1,0 +1,221 @@
+@page "/report"
+@rendermode InteractiveServer
+@implements IDisposable
+@inject EventService Events
+
+<PageTitle>Report · Baby Tracker</PageTitle>
+
+<h1>Report</h1>
+
+<div class="range">
+    <button class="chip @(preset == 1 ? "on" : "")" @onclick="() => Apply(1)">Today</button>
+    <button class="chip @(preset == 7 ? "on" : "")" @onclick="() => Apply(7)">7 days</button>
+    <button class="chip @(preset == 30 ? "on" : "")" @onclick="() => Apply(30)">30 days</button>
+    <button class="chip @(preset == 0 ? "on" : "")" @onclick="() => preset = 0">Custom</button>
+</div>
+
+@if (preset == 0)
+{
+    <div class="card">
+        <div class="field">
+            <label for="from">From</label>
+            <input id="from" type="date" @bind="fromDate" @bind:after="Reload" />
+        </div>
+        <div class="field" style="margin-bottom:0">
+            <label for="to">To</label>
+            <input id="to" type="date" @bind="toDate" @bind:after="Reload" />
+        </div>
+    </div>
+}
+
+<div class="stats">
+    <div class="stat breast">
+        <div class="k"><Icon Name="breast" /> Breast feeds</div>
+        <div class="v">@breastCount</div>
+        <div class="x">@(breastTotal > TimeSpan.Zero ? $"{Display.Duration(breastTotal)} total · {Display.Duration(breastAvg)} avg" : "no completed sessions")</div>
+    </div>
+    <div class="stat bottle">
+        <div class="k"><Icon Name="bottle" /> Bottles</div>
+        <div class="v">@bottleCount</div>
+        <div class="x">@bottleMl ml · @formulaCount formula / @breastMilkCount breast milk</div>
+    </div>
+    <div class="stat poop">
+        <div class="k"><Icon Name="poop" /> Poops</div>
+        <div class="v">@Count(EventKind.Poop)</div>
+        <div class="x">@PerDay(Count(EventKind.Poop))</div>
+    </div>
+    <div class="stat urine">
+        <div class="k"><Icon Name="urine" /> Urine</div>
+        <div class="v">@Count(EventKind.Urine)</div>
+        <div class="x">@PerDay(Count(EventKind.Urine))</div>
+    </div>
+    <div class="stat vomit">
+        <div class="k"><Icon Name="vomit" /> Vomits</div>
+        <div class="v">@Count(EventKind.Vomit)</div>
+        <div class="x">@PerDay(Count(EventKind.Vomit))</div>
+    </div>
+</div>
+
+@if (days.Count > 1)
+{
+    <div class="section-title"><span>Day by day</span></div>
+    <div class="card scroll-x">
+        <table class="grid">
+            <thead>
+                <tr>
+                    <th>Day</th>
+                    <th><Icon Name="breast" /></th>
+                    <th>Time</th>
+                    <th><Icon Name="bottle" /></th>
+                    <th>ml</th>
+                    <th><Icon Name="poop" /></th>
+                    <th><Icon Name="urine" /></th>
+                    <th><Icon Name="vomit" /></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var day in days)
+                {
+                    <tr>
+                        <td>@day.Date.ToString("ddd d MMM")</td>
+                        <td>@Num(day.Breast)</td>
+                        <td>@(day.BreastTime > TimeSpan.Zero ? Display.Duration(day.BreastTime) : "–")</td>
+                        <td>@Num(day.Bottle)</td>
+                        <td>@(day.Ml > 0 ? day.Ml.ToString() : "–")</td>
+                        <td>@Num(day.Poop)</td>
+                        <td>@Num(day.Urine)</td>
+                        <td>@Num(day.Vomit)</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<div class="section-title">
+    <span>All entries (@events.Count)</span>
+</div>
+
+<div class="card">
+    <EventList Events="listed" ShowDate="true" OnEdit="e => editing = e" EmptyText="Nothing logged in this range." />
+    @if (events.Count > listed.Count)
+    {
+        <div class="empty">Showing the @listed.Count most recent of @events.Count entries — narrow the range to see the rest.</div>
+    }
+</div>
+
+@if (editing is not null)
+{
+    <EditEventDialog Event="editing" OnCancel="() => editing = null" OnSave="SaveEdit" OnDelete="DeleteEvent" />
+}
+
+@code {
+    private int preset = 1;
+    private DateTime fromDate = DateTime.Now.Date;
+    private DateTime toDate = DateTime.Now.Date;
+
+    private const int MaxListed = 100;
+
+    private List<BabyEvent> events = [];
+    private List<BabyEvent> listed = [];
+    private List<DayRow> days = [];
+    private BabyEvent? editing;
+
+    private int breastCount;
+    private TimeSpan breastTotal;
+    private TimeSpan breastAvg;
+    private int bottleCount;
+    private int bottleMl;
+    private int formulaCount;
+    private int breastMilkCount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Reload();
+        Events.Changed += OnEventsChanged;
+    }
+
+    private async Task Apply(int days)
+    {
+        preset = days;
+        toDate = DateTime.Now.Date;
+        fromDate = toDate.AddDays(-(days - 1));
+        await Reload();
+    }
+
+    private async Task Reload()
+    {
+        if (toDate < fromDate)
+        {
+            (fromDate, toDate) = (toDate, fromDate);
+        }
+
+        events = await Events.GetRangeAsync(Display.ToUtc(fromDate), Display.ToUtc(toDate.AddDays(1)));
+
+        listed = events.Take(MaxListed).ToList();
+
+        var breastFeeds = events.Where(e => e.Kind == EventKind.BreastFeed).ToList();
+        breastCount = breastFeeds.Count;
+        var completed = breastFeeds.Where(e => e.Duration is not null).ToList();
+        breastTotal = completed.Aggregate(TimeSpan.Zero, (sum, e) => sum + e.Duration!.Value);
+        breastAvg = completed.Count > 0 ? breastTotal / completed.Count : TimeSpan.Zero;
+
+        var bottles = events.Where(e => e.Kind == EventKind.BottleFeed).ToList();
+        bottleCount = bottles.Count;
+        bottleMl = bottles.Sum(e => e.AmountMl ?? 0);
+        formulaCount = bottles.Count(e => e.Milk == MilkKind.Formula);
+        breastMilkCount = bottles.Count(e => e.Milk == MilkKind.BreastMilk);
+
+        // Every day in the range gets a row, including the quiet ones.
+        var byDay = events.GroupBy(e => Display.ToLocal(e.StartUtc).Date)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        days = [];
+        for (var day = toDate; day >= fromDate; day = day.AddDays(-1))
+        {
+            var entries = byDay.TryGetValue(day, out var list) ? list : [];
+            days.Add(new DayRow(
+                day,
+                entries.Count(e => e.Kind == EventKind.BreastFeed),
+                entries.Where(e => e.Kind == EventKind.BreastFeed && e.Duration is not null)
+                       .Aggregate(TimeSpan.Zero, (sum, e) => sum + e.Duration!.Value),
+                entries.Count(e => e.Kind == EventKind.BottleFeed),
+                entries.Where(e => e.Kind == EventKind.BottleFeed).Sum(e => e.AmountMl ?? 0),
+                entries.Count(e => e.Kind == EventKind.Poop),
+                entries.Count(e => e.Kind == EventKind.Urine),
+                entries.Count(e => e.Kind == EventKind.Vomit)));
+        }
+    }
+
+    private int Count(EventKind kind) => events.Count(e => e.Kind == kind);
+
+    private static string Num(int value) => value == 0 ? "–" : value.ToString();
+
+    private string PerDay(int count)
+    {
+        var spanDays = Math.Max(1, (toDate - fromDate).Days + 1);
+        return spanDays == 1 ? "today" : $"{(double)count / spanDays:0.#} per day";
+    }
+
+    private void OnEventsChanged() => _ = InvokeAsync(async () =>
+    {
+        await Reload();
+        StateHasChanged();
+    });
+
+    private async Task SaveEdit(BabyEvent updated)
+    {
+        editing = null;
+        await Events.UpdateAsync(updated);
+    }
+
+    private async Task DeleteEvent(int id)
+    {
+        editing = null;
+        await Events.DeleteAsync(id);
+    }
+
+    public void Dispose() => Events.Changed -= OnEventsChanged;
+
+    private record DayRow(DateTime Date, int Breast, TimeSpan BreastTime, int Bottle, int Ml, int Poop, int Urine, int Vomit);
+}

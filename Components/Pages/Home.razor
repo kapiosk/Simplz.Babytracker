@@ -1,0 +1,205 @@
+@page "/"
+@rendermode InteractiveServer
+@implements IAsyncDisposable
+@inject EventService Events
+
+<PageTitle>Baby Tracker</PageTitle>
+
+<div class="actions">
+    @if (running is not null)
+    {
+        <button class="action breast running wide" @onclick="StopBreastFeed">
+            <span class="ico"><Icon Name="breast" /></span>
+            <span class="timer">@Display.Clock(DateTime.UtcNow - running.StartUtc)</span>
+            <span>Tap to stop</span>
+            <span class="hint">started @Display.ToLocal(running.StartUtc).ToString("HH:mm")</span>
+        </button>
+    }
+    else
+    {
+        <button class="action breast wide" @onclick="StartBreastFeed">
+            <span class="ico"><Icon Name="breast" /></span>
+            <span>Start breast feed</span>
+            <span class="hint">@LastHint(EventKind.BreastFeed)</span>
+        </button>
+    }
+
+    <button class="action bottle" @onclick="() => showBottle = true">
+        <span class="ico"><Icon Name="bottle" /></span>
+        <span>Bottle</span>
+        <span class="hint">@LastHint(EventKind.BottleFeed)</span>
+    </button>
+
+    <button class="action poop" @onclick="() => Log(EventKind.Poop)">
+        <span class="ico"><Icon Name="poop" /></span>
+        <span>Poop</span>
+        <span class="hint">@LastHint(EventKind.Poop)</span>
+    </button>
+
+    <button class="action urine" @onclick="() => Log(EventKind.Urine)">
+        <span class="ico"><Icon Name="urine" /></span>
+        <span>Urine</span>
+        <span class="hint">@LastHint(EventKind.Urine)</span>
+    </button>
+
+    <button class="action vomit" @onclick="() => Log(EventKind.Vomit)">
+        <span class="ico"><Icon Name="vomit" /></span>
+        <span>Vomit</span>
+        <span class="hint">@LastHint(EventKind.Vomit)</span>
+    </button>
+</div>
+
+<div class="section-title">
+    <span>Recent</span>
+    <a href="report">See report</a>
+</div>
+
+<div class="card">
+    <EventList Events="recent" OnEdit="e => editing = e" EmptyText="Tap a button above to log the first entry." />
+</div>
+
+@if (showBottle)
+{
+    <BottleDialog OnCancel="() => showBottle = false" OnSave="SaveBottle" />
+}
+
+@if (editing is not null)
+{
+    <EditEventDialog Event="editing" OnCancel="() => editing = null" OnSave="SaveEdit" OnDelete="DeleteEvent" />
+}
+
+@if (toastUntil > DateTime.UtcNow)
+{
+    <div class="toast">@toast</div>
+}
+
+@code {
+    private List<BabyEvent> recent = [];
+    private BabyEvent? running;
+    private BabyEvent? editing;
+    private bool showBottle;
+
+    private string? toast;
+    private DateTime toastUntil = DateTime.MinValue;
+
+    private CancellationTokenSource? ticker;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Reload();
+        Events.Changed += OnEventsChanged;
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender && ticker is null)
+        {
+            ticker = new CancellationTokenSource();
+            _ = TickAsync(ticker.Token);
+        }
+    }
+
+    /// <summary>
+    /// Keeps the running timer and the "x minutes ago" hints moving. Ticks every second only while a
+    /// feed is actually running, otherwise once every 30 seconds to keep the circuit chatter low.
+    /// </summary>
+    private async Task TickAsync(CancellationToken ct)
+    {
+        try
+        {
+            while (!ct.IsCancellationRequested)
+            {
+                var interval = running is not null || toastUntil > DateTime.UtcNow
+                    ? TimeSpan.FromSeconds(1)
+                    : TimeSpan.FromSeconds(30);
+
+                await Task.Delay(interval, ct);
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private void OnEventsChanged() => _ = InvokeAsync(async () =>
+    {
+        await Reload();
+        StateHasChanged();
+    });
+
+    private async Task Reload()
+    {
+        recent = await Events.GetRecentAsync(12);
+        running = recent.FirstOrDefault(e => e.IsRunning) ?? await Events.GetRunningBreastFeedAsync();
+    }
+
+    private string LastHint(EventKind kind)
+    {
+        var last = recent.FirstOrDefault(e => e.Kind == kind && !e.IsRunning);
+        return last is null ? "no entry yet" : $"last {Display.Ago(last.EndUtc ?? last.StartUtc)}";
+    }
+
+    private async Task StartBreastFeed()
+    {
+        await Events.StartBreastFeedAsync();
+        Toast("Breast feed started");
+    }
+
+    private async Task StopBreastFeed()
+    {
+        if (running is null)
+        {
+            return;
+        }
+
+        var elapsed = DateTime.UtcNow - running.StartUtc;
+        await Events.StopBreastFeedAsync(running.Id);
+        Toast($"Breast feed · {Display.Duration(elapsed)}");
+    }
+
+    private async Task Log(EventKind kind)
+    {
+        await Events.LogAsync(kind);
+        Toast($"{Display.Label(kind)} logged");
+    }
+
+    private async Task SaveBottle(BottleDialog.BottleEntry entry)
+    {
+        showBottle = false;
+        await Events.LogBottleAsync(entry.Milk, entry.AmountMl, entry.Notes);
+        Toast(entry.AmountMl is > 0 ? $"Bottle · {entry.AmountMl} ml" : "Bottle logged");
+    }
+
+    private async Task SaveEdit(BabyEvent updated)
+    {
+        editing = null;
+        await Events.UpdateAsync(updated);
+        Toast("Saved");
+    }
+
+    private async Task DeleteEvent(int id)
+    {
+        editing = null;
+        await Events.DeleteAsync(id);
+        Toast("Deleted");
+    }
+
+    private void Toast(string message)
+    {
+        toast = message;
+        toastUntil = DateTime.UtcNow.AddSeconds(2.5);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Events.Changed -= OnEventsChanged;
+
+        if (ticker is not null)
+        {
+            await ticker.CancelAsync();
+            ticker.Dispose();
+            ticker = null;
+        }
+    }
+}
