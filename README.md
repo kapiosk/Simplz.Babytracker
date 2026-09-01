@@ -24,6 +24,21 @@ correcting a feed to "actually, it started twenty minutes ago" is two taps.
   time backwards and the live timer follows, without stopping the feed.
 - *Still feeding* on the stop field clears it again, turning a finished feed back into a running one.
 
+**Chart** (`/chart`) — the paper-chart view: one row per feed, with the nappies and spit-ups recorded
+against it, grouped under a header per day.
+
+```
+TIME    BREAST                  BOTTLE   💧  💩  🤮
+04:30   04:30 → 04:50   20m     90  F    +   +
+11:45   11:45 → 12:45   1h 00m  90  F    +
+16:20   16:20 → 17:00   40m     75  BM   +   +
+19:00                           90  F    +   +
+```
+
+A breast feed and a bottle within 20 minutes of each other share a row (breast plus a top-up), and an
+output within 4 hours of a feed is recorded against that feed — so it's obvious which stool followed
+which feed. Every cell and every `+` is a button that opens that entry for editing.
+
 **Report** (`/report`) — today / 7 days / 30 days / custom range, with:
 
 - totals per type: feed count, total and average feeding time, bottle count and total ml split by milk type,
@@ -87,8 +102,9 @@ Two caveats worth knowing:
 | `Data/` | `BabyEvent` entity, `AppDbContext`, EF Core migrations |
 | `Services/EventService.cs` | All reads and writes, plus a `Changed` event that pushes updates to open pages |
 | `Services/Display.cs` | UTC↔local conversion and the shared label/duration formatting |
-| `Components/Pages/` | `Home.razor` (the buttons), `Report.razor` |
-| `Components/` | `EventList`, `BottleDialog`, `EditEventDialog`, `Icon` (inline SVG icon set) |
+| `Services/ChartGrouping.cs` | Rebuilds the flat log into paper-chart rows (feed + its outputs) |
+| `Components/Pages/` | `Home.razor` (the buttons), `Chart.razor`, `Report.razor` |
+| `Components/` | `EventList`, `BottleDialog`, `EditEventDialog`, `TimeField`, `RangePicker`, `OutputMarks`, `Icon` |
 | `wwwroot/` | `app.css`, `manifest.webmanifest`, `service-worker.js`, `offline.html`, icons |
 
 Times are stored in UTC and rendered in the server's local timezone (`TZ`).
@@ -101,3 +117,7 @@ dotnet dotnet-ef migrations add <Name> -o Data/Migrations
 ```
 
 Migrations are applied automatically the next time the app starts.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

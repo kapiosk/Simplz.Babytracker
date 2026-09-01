@@ -303,6 +303,101 @@ table.grid th { color: var(--text-dim); font-size: .75rem; text-transform: upper
 table.grid td { font-variant-numeric: tabular-nums; }
 .scroll-x { overflow-x: auto; }
 
+/* ---------- chart (paper-style) table ---------- */
+
+table.chart {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .82rem;
+}
+
+table.chart th {
+    padding: .3rem .25rem .45rem;
+    color: var(--text-dim);
+    font-size: .7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+}
+
+table.chart th:first-child, table.chart th:nth-child(2), table.chart th:nth-child(3) { text-align: left; }
+table.chart th .ico { font-size: 1.1rem; margin: 0 auto; }
+
+table.chart td {
+    padding: .3rem .15rem;
+    border-bottom: 1px solid var(--border);
+    text-align: center;
+    vertical-align: middle;
+}
+
+table.chart tr:last-child td { border-bottom: none; }
+
+table.chart td.t {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    text-align: left;
+    white-space: nowrap;
+    padding-right: .4rem;
+}
+
+table.chart td.breast-cell, table.chart td.bottle-cell { text-align: left; }
+table.chart th:nth-child(4), table.chart th:nth-child(5), table.chart th:nth-child(6),
+table.chart td:nth-child(4), table.chart td:nth-child(5), table.chart td:nth-child(6) {
+    width: 2.1rem;
+    white-space: nowrap;
+}
+
+.cell {
+    appearance: none;
+    border: none;
+    background: var(--surface-2);
+    color: var(--text);
+    border-radius: 9px;
+    padding: .28rem .4rem;
+    margin: .1rem .15rem .1rem 0;
+    font: inherit;
+    font-size: .8rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+    cursor: pointer;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+}
+
+.cell:hover { outline: 2px solid var(--accent); }
+.cell .sub { color: var(--text-dim); font-size: .7rem; font-weight: 700; }
+.cell .sub.bm { color: var(--breast); }
+.cell .sub.f { color: var(--bottle); }
+
+.mark {
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: var(--text);
+    font-size: 1.1rem;
+    font-weight: 800;
+    line-height: 1;
+    padding: .3rem .15rem;
+    cursor: pointer;
+    border-radius: 8px;
+}
+
+.mark:hover { background: var(--surface-2); }
+
+.day-sum {
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 600;
+    color: var(--text-dim);
+}
+
 /* ---------- dialog ---------- */
 
 .sheet-backdrop {

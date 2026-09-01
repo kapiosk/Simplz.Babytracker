@@ -1,0 +1,158 @@
+@page "/chart"
+@rendermode InteractiveServer
+@implements IDisposable
+@inject EventService Events
+
+<PageTitle>Chart · Baby Tracker</PageTitle>
+
+<h1>Chart</h1>
+
+<RangePicker DefaultDays="7" OnChanged="OnRange" />
+
+@if (days.Count == 0)
+{
+    <div class="card"><div class="empty">Nothing logged in this range.</div></div>
+}
+
+@foreach (var day in days)
+{
+    <div class="section-title">
+        <span>@day.Date.ToString("ddd d MMM")</span>
+        <span class="day-sum">@DaySummary(day)</span>
+    </div>
+
+    <div class="card scroll-x">
+        <table class="chart">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Breast</th>
+                    <th>Bottle</th>
+                    <th title="Urine"><span class="ico urine"><Icon Name="urine" /></span></th>
+                    <th title="Stools"><span class="ico poop"><Icon Name="poop" /></span></th>
+                    <th title="Emesis"><span class="ico vomit"><Icon Name="vomit" /></span></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in day.Rows)
+                {
+                    <tr @key="row.StartUtc">
+                        <td class="t">@Display.ToLocal(row.StartUtc).ToString("HH:mm")</td>
+
+                        <td class="breast-cell">
+                            @foreach (var feed in row.Breast)
+                            {
+                                <button class="cell" @onclick="() => editing = feed">
+                                    @Display.ToLocal(feed.StartUtc).ToString("HH:mm")→@(feed.EndUtc is null
+                                        ? "…"
+                                        : Display.ToLocal(feed.EndUtc.Value).ToString("HH:mm"))
+                                    @if (feed.Duration is not null)
+                                    {
+                                        <span class="sub">@Display.Duration(feed.Duration.Value)</span>
+                                    }
+                                </button>
+                            }
+                        </td>
+
+                        <td class="bottle-cell">
+                            @foreach (var bottle in row.Bottles)
+                            {
+                                <button class="cell" @onclick="() => editing = bottle"
+                                        title="@Display.ToLocal(bottle.StartUtc).ToString("HH:mm")">
+                                    @(bottle.AmountMl is > 0 ? $"{bottle.AmountMl}" : "–")
+                                    <span class="sub @(bottle.Milk == MilkKind.BreastMilk ? "bm" : "f")">
+                                        @(bottle.Milk == MilkKind.BreastMilk ? "BM" : "F")
+                                    </span>
+                                </button>
+                            }
+                        </td>
+
+                        <td><OutputMarks Entries="row.Urine" OnEdit="e => editing = e" /></td>
+                        <td><OutputMarks Entries="row.Stools" OnEdit="e => editing = e" /></td>
+                        <td><OutputMarks Entries="row.Emesis" OnEdit="e => editing = e" /></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<button class="btn block subtle" @onclick="AddEarlier">+ Add an entry from earlier</button>
+
+@if (editing is not null)
+{
+    <EditEventDialog Event="editing" OnCancel="() => editing = null" OnSave="SaveEdit" OnDelete="DeleteEvent" />
+}
+
+@code {
+    private List<ChartDay> days = [];
+    private BabyEvent? editing;
+    private DateTime fromDate = DateTime.Now.Date;
+    private DateTime toDate = DateTime.Now.Date;
+
+    protected override void OnInitialized() => Events.Changed += OnEventsChanged;
+
+    private async Task OnRange(RangePicker.Selection range)
+    {
+        (fromDate, toDate) = (range.From, range.To);
+        await Reload();
+    }
+
+    private async Task Reload()
+    {
+        var events = await Events.GetRangeAsync(Display.ToUtc(fromDate), Display.ToUtc(toDate.AddDays(1)));
+        days = ChartGrouping.Build(events);
+    }
+
+    private string DaySummary(ChartDay day)
+    {
+        var parts = new List<string> { $"{day.Feeds} feeds" };
+
+        if (day.BreastTime > TimeSpan.Zero)
+        {
+            parts.Add(Display.Duration(day.BreastTime));
+        }
+
+        if (day.Ml > 0)
+        {
+            parts.Add($"{day.Ml} ml");
+        }
+
+        parts.Add(day.Stools == 1 ? "1 stool" : $"{day.Stools} stools");
+        return string.Join(" · ", parts);
+    }
+
+    private void AddEarlier() => editing = new BabyEvent
+    {
+        Kind = EventKind.BreastFeed,
+        StartUtc = DateTime.UtcNow.AddMinutes(-15),
+        EndUtc = DateTime.UtcNow
+    };
+
+    private void OnEventsChanged() => _ = InvokeAsync(async () =>
+    {
+        await Reload();
+        StateHasChanged();
+    });
+
+    private async Task SaveEdit(BabyEvent updated)
+    {
+        editing = null;
+
+        if (updated.Id == 0)
+        {
+            await Events.AddAsync(updated);
+            return;
+        }
+
+        await Events.UpdateAsync(updated);
+    }
+
+    private async Task DeleteEvent(int id)
+    {
+        editing = null;
+        await Events.DeleteAsync(id);
+    }
+
+    public void Dispose() => Events.Changed -= OnEventsChanged;
+}

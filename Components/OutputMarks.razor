@@ -1,0 +1,11 @@
+@* The "+" marks in an output column; each one opens its own entry. *@
+@foreach (var entry in Entries)
+{
+    <button class="mark" title="@Display.ToLocal(entry.StartUtc).ToString("HH:mm")"
+            @onclick="() => OnEdit.InvokeAsync(entry)">+</button>
+}
+
+@code {
+    [Parameter, EditorRequired] public List<BabyEvent> Entries { get; set; } = [];
+    [Parameter] public EventCallback<BabyEvent> OnEdit { get; set; }
+}

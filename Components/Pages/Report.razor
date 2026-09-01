@@ -7,26 +7,7 @@
 
 <h1>Report</h1>
 
-<div class="range">
-    <button class="chip @(preset == 1 ? "on" : "")" @onclick="() => Apply(1)">Today</button>
-    <button class="chip @(preset == 7 ? "on" : "")" @onclick="() => Apply(7)">7 days</button>
-    <button class="chip @(preset == 30 ? "on" : "")" @onclick="() => Apply(30)">30 days</button>
-    <button class="chip @(preset == 0 ? "on" : "")" @onclick="() => preset = 0">Custom</button>
-</div>
-
-@if (preset == 0)
-{
-    <div class="card">
-        <div class="field">
-            <label for="from">From</label>
-            <input id="from" type="date" @bind="fromDate" @bind:after="Reload" />
-        </div>
-        <div class="field" style="margin-bottom:0">
-            <label for="to">To</label>
-            <input id="to" type="date" @bind="toDate" @bind:after="Reload" />
-        </div>
-    </div>
-}
+<RangePicker DefaultDays="1" OnChanged="OnRange" />
 
 <div class="stats">
     <div class="stat breast">
@@ -112,7 +93,6 @@
 }
 
 @code {
-    private int preset = 1;
     private DateTime fromDate = DateTime.Now.Date;
     private DateTime toDate = DateTime.Now.Date;
 
@@ -131,27 +111,16 @@
     private int formulaCount;
     private int breastMilkCount;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await Reload();
-        Events.Changed += OnEventsChanged;
-    }
+    protected override void OnInitialized() => Events.Changed += OnEventsChanged;
 
-    private async Task Apply(int days)
+    private async Task OnRange(RangePicker.Selection range)
     {
-        preset = days;
-        toDate = DateTime.Now.Date;
-        fromDate = toDate.AddDays(-(days - 1));
+        (fromDate, toDate) = (range.From, range.To);
         await Reload();
     }
 
     private async Task Reload()
     {
-        if (toDate < fromDate)
-        {
-            (fromDate, toDate) = (toDate, fromDate);
-        }
-
         events = await Events.GetRangeAsync(Display.ToUtc(fromDate), Display.ToUtc(toDate.AddDays(1)));
 
         listed = events.Take(MaxListed).ToList();

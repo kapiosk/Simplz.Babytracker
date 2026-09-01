@@ -1,0 +1,72 @@
+@* Today / 7 / 30 days / custom, shared by the chart and the report. *@
+<div class="range">
+    <button class="chip @(preset == 1 ? "on" : "")" @onclick="() => Apply(1)">Today</button>
+    <button class="chip @(preset == 7 ? "on" : "")" @onclick="() => Apply(7)">7 days</button>
+    <button class="chip @(preset == 30 ? "on" : "")" @onclick="() => Apply(30)">30 days</button>
+    <button class="chip @(preset == 0 ? "on" : "")" @onclick="() => preset = 0">Custom</button>
+</div>
+
+@if (preset == 0)
+{
+    <div class="card">
+        <div class="field">
+            <label for="from">From</label>
+            <input id="from" type="date" value="@fromText" @onchange="e => SetFrom(e.Value?.ToString())" />
+        </div>
+        <div class="field" style="margin-bottom:0">
+            <label for="to">To</label>
+            <input id="to" type="date" value="@toText" @onchange="e => SetTo(e.Value?.ToString())" />
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int DefaultDays { get; set; } = 1;
+    [Parameter] public EventCallback<Selection> OnChanged { get; set; }
+
+    private const string DateFormat = "yyyy-MM-dd";
+
+    private int preset;
+    private DateTime fromDate = DateTime.Now.Date;
+    private DateTime toDate = DateTime.Now.Date;
+
+    private string fromText => fromDate.ToString(DateFormat);
+    private string toText => toDate.ToString(DateFormat);
+
+    protected override Task OnInitializedAsync() => Apply(DefaultDays);
+
+    private Task Apply(int days)
+    {
+        preset = days;
+        toDate = DateTime.Now.Date;
+        fromDate = toDate.AddDays(-(days - 1));
+        return Notify();
+    }
+
+    private Task SetFrom(string? text)
+    {
+        fromDate = TimeField.Parse(text)?.Date ?? fromDate;
+        return Notify();
+    }
+
+    private Task SetTo(string? text)
+    {
+        toDate = TimeField.Parse(text)?.Date ?? toDate;
+        return Notify();
+    }
+
+    private Task Notify()
+    {
+        if (toDate < fromDate)
+        {
+            (fromDate, toDate) = (toDate, fromDate);
+        }
+
+        return OnChanged.InvokeAsync(new Selection(fromDate, toDate));
+    }
+
+    public record Selection(DateTime From, DateTime To)
+    {
+        public int Days => (To - From).Days + 1;
+    }
+}
