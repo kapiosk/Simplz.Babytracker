@@ -7,3 +7,6 @@ App_Data/
 *.db-wal
 *.user
 .vs/
+
+# Claude Code local settings
+.claude/settings.local.json

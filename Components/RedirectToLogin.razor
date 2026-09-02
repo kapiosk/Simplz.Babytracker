@@ -1,0 +1,11 @@
+@* Rendered in place of a page the visitor may not see; sends them to the password prompt. *@
+@attribute [AllowAnonymous]
+@inject NavigationManager Nav
+
+@code {
+    protected override void OnInitialized()
+    {
+        var returnUrl = new Uri(Nav.Uri).PathAndQuery;
+        Nav.NavigateTo($"login?returnUrl={Uri.EscapeDataString(returnUrl)}", forceLoad: true);
+    }
+}

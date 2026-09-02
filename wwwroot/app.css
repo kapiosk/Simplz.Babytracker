@@ -543,3 +543,81 @@ a.btn { display: inline-block; text-decoration: none; }
     right: 0.75rem;
     top: 0.5rem;
 }
+
+/* ---------- auth ---------- */
+
+.app-header .who {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin: 0;
+}
+
+.role {
+    padding: .2rem .5rem;
+    border-radius: 999px;
+    font-size: .7rem;
+    font-weight: 800;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+    background: var(--surface-2);
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    white-space: nowrap;
+}
+
+.link-btn {
+    appearance: none;
+    background: none;
+    border: none;
+    padding: .25rem;
+    font: inherit;
+    font-size: .8rem;
+    font-weight: 600;
+    color: var(--text-dim);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.link-btn:hover { color: var(--text); }
+
+.app-main.bare { padding-bottom: calc(2rem + env(safe-area-inset-bottom)); }
+
+.login {
+    max-width: 340px;
+    margin: 12vh auto 0;
+    text-align: center;
+}
+
+.login h1 { font-size: 1.6rem; }
+.login .field { text-align: left; margin-top: 1.5rem; }
+.login-sub { color: var(--text-dim); margin: 0; }
+.login-error { color: var(--danger); font-size: .85rem; font-weight: 600; margin: 0 0 .9rem; }
+.login-note { color: var(--text-dim); font-size: .8rem; line-height: 1.5; margin-top: 1.5rem; }
+
+/* Read-only: the same cells and marks, minus the click affordance. */
+.cell.ro, .mark.ro { cursor: default; }
+.cell.ro:hover { outline: none; }
+.mark.ro:hover { background: transparent; }
+
+.notice {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: .85rem 1rem;
+    color: var(--text-dim);
+    font-size: .88rem;
+    line-height: 1.5;
+}
+
+.running-note {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin-top: .75rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.running-note .ico.breast { color: var(--breast); font-size: 1.4rem; display: inline-flex; }
+.running-note .ico .icon { width: 1.4rem; height: 1.4rem; }

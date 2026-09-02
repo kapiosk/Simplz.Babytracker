@@ -1,11 +1,20 @@
-@* The "+" marks in an output column; each one opens its own entry. *@
+@* The "+" marks in an output column; with edit rights each one opens its own entry. *@
 @foreach (var entry in Entries)
 {
-    <button class="mark" title="@Display.ToLocal(entry.StartUtc).ToString("HH:mm")"
-            @onclick="() => OnEdit.InvokeAsync(entry)">+</button>
+    var at = Display.ToLocal(entry.StartUtc).ToString("HH:mm");
+
+    if (CanEdit)
+    {
+        <button class="mark" title="@at" @onclick="() => OnEdit.InvokeAsync(entry)">+</button>
+    }
+    else
+    {
+        <span class="mark ro" title="@at">+</span>
+    }
 }
 
 @code {
     [Parameter, EditorRequired] public List<BabyEvent> Entries { get; set; } = [];
     [Parameter] public EventCallback<BabyEvent> OnEdit { get; set; }
+    [Parameter] public bool CanEdit { get; set; }
 }

@@ -5,6 +5,19 @@
         <div class="title">Baby Tracker</div>
         <div class="sub">@DateTime.Now.ToString("dddd d MMMM")</div>
     </div>
+
+    <AuthorizeView>
+        <Authorized>
+            <form class="who" action="logout" method="post">
+                <AntiforgeryToken />
+                @if (!context.User.IsInRole(Roles.Parent))
+                {
+                    <span class="role ro" title="This password cannot change anything">Read only</span>
+                }
+                <button type="submit" class="link-btn">Sign out</button>
+            </form>
+        </Authorized>
+    </AuthorizeView>
 </header>
 
 <main class="app-main">

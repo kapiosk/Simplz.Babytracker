@@ -1,5 +1,7 @@
 ﻿@using System.Net.Http
 @using System.Net.Http.Json
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components.Routing
 @using Microsoft.AspNetCore.Components.Web
@@ -11,3 +13,6 @@
 @using Simplz.Babytracker.Components.Layout
 @using Simplz.Babytracker.Data
 @using Simplz.Babytracker.Services
+
+@* Everything needs a password; the login page opts back out with [AllowAnonymous]. *@
+@attribute [Authorize]
