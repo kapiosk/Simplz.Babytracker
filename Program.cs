@@ -11,7 +11,20 @@ using Simplz.Babytracker.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+    .AddInteractiveServerComponents(options =>
+    {
+        // A phone that has been locked for a few minutes should get its own circuit back
+        // rather than be told to reload, so keep disconnected circuits well past the
+        // three minute default. They are cheap: this app has a handful of users at most.
+        options.DisconnectedCircuitRetentionPeriod = TimeSpan.FromMinutes(15);
+    })
+    .AddHubOptions(options =>
+    {
+        // Ping more often than the 15 second default, so a socket that died with the
+        // screen is noticed sooner. wwwroot/circuit-watchdog.js is what actually catches
+        // it, but a livelier connection means fewer of those to catch.
+        options.KeepAliveInterval = TimeSpan.FromSeconds(10);
+    });
 
 var connectionString = builder.Configuration.GetConnectionString("Default")
     ?? "Data Source=App_Data/babytracker.db";

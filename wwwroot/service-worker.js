@@ -6,7 +6,7 @@
 //   2. shows a friendly offline page instead of the browser error when the phone is off-network.
 // Anything dynamic (_blazor, _framework, POSTs) always goes straight to the network.
 
-const CACHE = 'babytracker-v1';
+const CACHE = 'babytracker-v2';
 const SHELL = [
     'app.css',
     'offline.html',
