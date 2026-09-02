@@ -115,6 +115,28 @@ Two caveats worth knowing:
   "you're offline" page instead of a browser error; it deliberately never caches the app's HTML or its
   SignalR traffic.
 
+## When the connection drops
+
+Blazor Server renders over a live SignalR circuit: every tap travels to the container and the
+server sends the new HTML back. When that circuit dies — the phone slept, the wifi dropped, the
+container restarted — the page keeps looking perfectly fine while nothing it does reaches the
+server. Buttons that do nothing, and no error to explain it.
+
+Three things deal with that:
+
+- **A Reload button** (the ↻ in the header, and a second one in the banner). It is plain JavaScript
+  rather than a Blazor click handler, because the circuit is exactly what is broken when it is
+  needed. Nothing is lost by reloading: a running feed lives in the database, not in the page.
+- **`wwwroot/circuit-watchdog.js`** asks the server directly instead of waiting for Blazor's own
+  30 second timeout to notice. A tiny round trip over the circuit (`Services/CircuitPing.cs`) runs
+  whenever the page comes back on screen, when the network returns, and every 20 seconds while the
+  page is being looked at. No answer within 5 seconds means the circuit is dead: it rejoins, and
+  reloads the page if rejoining fails. A red banner says which is happening.
+- **Reconnecting keeps trying.** Blazor gives up after 30 attempts by default, having already
+  slowed to one attempt every 30 seconds; here it retries for as long as it takes, and disconnected
+  circuits are kept on the server for 15 minutes instead of 3, so a phone that was locked for a
+  while gets its own session back rather than a reload.
+
 ## Layout
 
 | Path | What's in it |
@@ -123,10 +145,11 @@ Two caveats worth knowing:
 | `Services/EventService.cs` | All reads and writes, plus a `Changed` event that pushes updates to open pages |
 | `Services/Display.cs` | UTC↔local conversion and the shared label/duration formatting |
 | `Services/ChartGrouping.cs` | Rebuilds the flat log into paper-chart rows (feed + its outputs) |
+| `Services/CircuitPing.cs` | The round trip the browser makes to check its own circuit is still alive |
 | `Services/Auth.cs` | The two passwords, the roles, and the check the pages use before rendering anything that writes |
 | `Components/Pages/` | `Home.razor` (the buttons), `Chart.razor`, `Report.razor`, `Login.razor` |
 | `Components/` | `EventList`, `BottleDialog`, `EditEventDialog`, `TimeField`, `RangePicker`, `OutputMarks`, `Icon` |
-| `wwwroot/` | `app.css`, `manifest.webmanifest`, `service-worker.js`, `offline.html`, icons |
+| `wwwroot/` | `app.css`, `circuit-watchdog.js`, `manifest.webmanifest`, `service-worker.js`, `offline.html`, icons |
 
 Times are stored in UTC and rendered in the server's local timezone (`TZ`).
 

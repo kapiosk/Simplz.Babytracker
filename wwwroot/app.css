@@ -621,3 +621,69 @@ a.btn { display: inline-block; text-decoration: none; }
 
 .running-note .ico.breast { color: var(--breast); font-size: 1.4rem; display: inline-flex; }
 .running-note .ico .icon { width: 1.4rem; height: 1.4rem; }
+
+/* ---------- circuit watchdog ---------- */
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: .25rem;
+}
+
+.icon-btn {
+    appearance: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.4rem;
+    height: 2.4rem;
+    padding: 0;
+    border: none;
+    border-radius: 999px;
+    background: none;
+    color: var(--text-dim);
+    font-size: 1.25rem;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.icon-btn:active {
+    background: var(--surface-2);
+    color: var(--text);
+}
+
+#circuit-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .75rem;
+    padding: max(env(safe-area-inset-top), .6rem) 1rem .6rem;
+    background: var(--danger);
+    color: #fff;
+    font-size: .85rem;
+    font-weight: 600;
+    box-shadow: var(--shadow);
+}
+
+/* An id beats the browser's own [hidden] rule, so say it again. */
+#circuit-banner[hidden] { display: none; }
+
+/* Room for the banner while it is up; circuit-watchdog.js sets the height it needs. */
+body { padding-top: var(--circuit-banner-h, 0px); }
+.app-header { top: var(--circuit-banner-h, 0px); }
+
+#circuit-banner button {
+    appearance: none;
+    padding: .3rem .85rem;
+    border: 1px solid rgba(255, 255, 255, .55);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .15);
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
