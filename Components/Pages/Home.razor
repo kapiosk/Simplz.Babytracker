@@ -5,55 +5,74 @@
 
 <PageTitle>Baby Tracker</PageTitle>
 
-<div class="actions">
+@if (canEdit)
+{
+    <div class="actions">
+        @if (running is not null)
+        {
+            <button class="action breast running wide" @onclick="StopBreastFeed">
+                <span class="ico"><Icon Name="breast" /></span>
+                <span class="timer">@Display.Clock(DateTime.UtcNow - running.StartUtc)</span>
+                <span>Tap to stop</span>
+                <span class="hint">started @Display.ToLocal(running.StartUtc).ToString("HH:mm")</span>
+            </button>
+        }
+        else
+        {
+            <button class="action breast wide" @onclick="StartBreastFeed">
+                <span class="ico"><Icon Name="breast" /></span>
+                <span>Start breast feed</span>
+                <span class="hint">@LastHint(EventKind.BreastFeed)</span>
+            </button>
+        }
+
+        <button class="action bottle" @onclick="() => showBottle = true">
+            <span class="ico"><Icon Name="bottle" /></span>
+            <span>Bottle</span>
+            <span class="hint">@LastHint(EventKind.BottleFeed)</span>
+        </button>
+
+        <button class="action poop" @onclick="() => Log(EventKind.Poop)">
+            <span class="ico"><Icon Name="poop" /></span>
+            <span>Poop</span>
+            <span class="hint">@LastHint(EventKind.Poop)</span>
+        </button>
+
+        <button class="action urine" @onclick="() => Log(EventKind.Urine)">
+            <span class="ico"><Icon Name="urine" /></span>
+            <span>Urine</span>
+            <span class="hint">@LastHint(EventKind.Urine)</span>
+        </button>
+
+        <button class="action vomit" @onclick="() => Log(EventKind.Vomit)">
+            <span class="ico"><Icon Name="vomit" /></span>
+            <span>Vomit</span>
+            <span class="hint">@LastHint(EventKind.Vomit)</span>
+        </button>
+    </div>
+
     @if (running is not null)
     {
-        <button class="action breast running wide" @onclick="StopBreastFeed">
-            <span class="ico"><Icon Name="breast" /></span>
-            <span class="timer">@Display.Clock(DateTime.UtcNow - running.StartUtc)</span>
-            <span>Tap to stop</span>
-            <span class="hint">started @Display.ToLocal(running.StartUtc).ToString("HH:mm")</span>
+        <button class="btn block subtle" @onclick="() => editing = running">
+            Started at @Display.ToLocal(running.StartUtc).ToString("HH:mm") — adjust
         </button>
     }
-    else
-    {
-        <button class="action breast wide" @onclick="StartBreastFeed">
-            <span class="ico"><Icon Name="breast" /></span>
-            <span>Start breast feed</span>
-            <span class="hint">@LastHint(EventKind.BreastFeed)</span>
-        </button>
-    }
-
-    <button class="action bottle" @onclick="() => showBottle = true">
-        <span class="ico"><Icon Name="bottle" /></span>
-        <span>Bottle</span>
-        <span class="hint">@LastHint(EventKind.BottleFeed)</span>
-    </button>
-
-    <button class="action poop" @onclick="() => Log(EventKind.Poop)">
-        <span class="ico"><Icon Name="poop" /></span>
-        <span>Poop</span>
-        <span class="hint">@LastHint(EventKind.Poop)</span>
-    </button>
-
-    <button class="action urine" @onclick="() => Log(EventKind.Urine)">
-        <span class="ico"><Icon Name="urine" /></span>
-        <span>Urine</span>
-        <span class="hint">@LastHint(EventKind.Urine)</span>
-    </button>
-
-    <button class="action vomit" @onclick="() => Log(EventKind.Vomit)">
-        <span class="ico"><Icon Name="vomit" /></span>
-        <span>Vomit</span>
-        <span class="hint">@LastHint(EventKind.Vomit)</span>
-    </button>
-</div>
-
-@if (running is not null)
+}
+else
 {
-    <button class="btn block subtle" @onclick="() => editing = running">
-        Started at @Display.ToLocal(running.StartUtc).ToString("HH:mm") — adjust
-    </button>
+    <div class="notice">
+        Read-only access: entries can be seen here and on the
+        <a href="chart">chart</a> and <a href="report">report</a>, but not changed.
+    </div>
+
+    @if (running is not null)
+    {
+        <div class="card running-note">
+            <span class="ico breast"><Icon Name="breast" /></span>
+            Breast feed running since @Display.ToLocal(running.StartUtc).ToString("HH:mm")
+            · @Display.Clock(DateTime.UtcNow - running.StartUtc)
+        </div>
+    }
 }
 
 <div class="section-title">
@@ -62,10 +81,14 @@
 </div>
 
 <div class="card">
-    <EventList Events="recent" OnEdit="e => editing = e" EmptyText="Tap a button above to log the first entry." />
+    <EventList Events="recent" CanEdit="canEdit" OnEdit="e => editing = e"
+               EmptyText="@(canEdit ? "Tap a button above to log the first entry." : "Nothing logged yet.")" />
 </div>
 
-<button class="btn block subtle" @onclick="AddEarlier">+ Add an entry from earlier</button>
+@if (canEdit)
+{
+    <button class="btn block subtle" @onclick="AddEarlier">+ Add an entry from earlier</button>
+}
 
 @if (showBottle)
 {
@@ -83,6 +106,9 @@
 }
 
 @code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    private bool canEdit;
     private List<BabyEvent> recent = [];
     private BabyEvent? running;
     private BabyEvent? editing;
@@ -95,6 +121,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        canEdit = await Access.CanEditAsync(AuthState);
         await Reload();
         Events.Changed += OnEventsChanged;
     }
@@ -151,13 +178,18 @@
 
     private async Task StartBreastFeed()
     {
+        if (!canEdit)
+        {
+            return;
+        }
+
         await Events.StartBreastFeedAsync();
         Toast("Breast feed started");
     }
 
     private async Task StopBreastFeed()
     {
-        if (running is null)
+        if (running is null || !canEdit)
         {
             return;
         }
@@ -169,6 +201,11 @@
 
     private async Task Log(EventKind kind)
     {
+        if (!canEdit)
+        {
+            return;
+        }
+
         await Events.LogAsync(kind);
         Toast($"{Display.Label(kind)} logged");
     }
@@ -176,6 +213,12 @@
     private async Task SaveBottle(BottleDialog.BottleEntry entry)
     {
         showBottle = false;
+
+        if (!canEdit)
+        {
+            return;
+        }
+
         await Events.LogBottleAsync(entry.Milk, entry.AmountMl, entry.Notes);
         Toast(entry.AmountMl is > 0 ? $"Bottle · {entry.AmountMl} ml" : "Bottle logged");
     }
@@ -192,6 +235,11 @@
     {
         editing = null;
 
+        if (!canEdit)
+        {
+            return;
+        }
+
         if (updated.Id == 0)
         {
             await Events.AddAsync(updated);
@@ -206,6 +254,12 @@
     private async Task DeleteEvent(int id)
     {
         editing = null;
+
+        if (!canEdit)
+        {
+            return;
+        }
+
         await Events.DeleteAsync(id);
         Toast("Deleted");
     }

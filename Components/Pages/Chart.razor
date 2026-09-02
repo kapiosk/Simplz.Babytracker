@@ -42,34 +42,37 @@
                         <td class="breast-cell">
                             @foreach (var feed in row.Breast)
                             {
-                                <button class="cell" @onclick="() => editing = feed">
-                                    @Display.ToLocal(feed.StartUtc).ToString("HH:mm")→@(feed.EndUtc is null
-                                        ? "…"
-                                        : Display.ToLocal(feed.EndUtc.Value).ToString("HH:mm"))
-                                    @if (feed.Duration is not null)
-                                    {
-                                        <span class="sub">@Display.Duration(feed.Duration.Value)</span>
-                                    }
-                                </button>
+                                @* A read-only visitor gets the same cell without the click target. *@
+                                if (canEdit)
+                                {
+                                    <button class="cell" @onclick="() => editing = feed">@BreastCell(feed)</button>
+                                }
+                                else
+                                {
+                                    <span class="cell ro">@BreastCell(feed)</span>
+                                }
                             }
                         </td>
 
                         <td class="bottle-cell">
                             @foreach (var bottle in row.Bottles)
                             {
-                                <button class="cell" @onclick="() => editing = bottle"
-                                        title="@Display.ToLocal(bottle.StartUtc).ToString("HH:mm")">
-                                    @(bottle.AmountMl is > 0 ? $"{bottle.AmountMl}" : "–")
-                                    <span class="sub @(bottle.Milk == MilkKind.BreastMilk ? "bm" : "f")">
-                                        @(bottle.Milk == MilkKind.BreastMilk ? "BM" : "F")
-                                    </span>
-                                </button>
+                                var at = Display.ToLocal(bottle.StartUtc).ToString("HH:mm");
+
+                                if (canEdit)
+                                {
+                                    <button class="cell" title="@at" @onclick="() => editing = bottle">@BottleCell(bottle)</button>
+                                }
+                                else
+                                {
+                                    <span class="cell ro" title="@at">@BottleCell(bottle)</span>
+                                }
                             }
                         </td>
 
-                        <td><OutputMarks Entries="row.Urine" OnEdit="e => editing = e" /></td>
-                        <td><OutputMarks Entries="row.Stools" OnEdit="e => editing = e" /></td>
-                        <td><OutputMarks Entries="row.Emesis" OnEdit="e => editing = e" /></td>
+                        <td><OutputMarks Entries="row.Urine" CanEdit="canEdit" OnEdit="e => editing = e" /></td>
+                        <td><OutputMarks Entries="row.Stools" CanEdit="canEdit" OnEdit="e => editing = e" /></td>
+                        <td><OutputMarks Entries="row.Emesis" CanEdit="canEdit" OnEdit="e => editing = e" /></td>
                     </tr>
                 }
             </tbody>
@@ -77,7 +80,10 @@
     </div>
 }
 
-<button class="btn block subtle" @onclick="AddEarlier">+ Add an entry from earlier</button>
+@if (canEdit)
+{
+    <button class="btn block subtle" @onclick="AddEarlier">+ Add an entry from earlier</button>
+}
 
 @if (editing is not null)
 {
@@ -85,12 +91,38 @@
 }
 
 @code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    private bool canEdit;
     private List<ChartDay> days = [];
     private BabyEvent? editing;
     private DateTime fromDate = DateTime.Now.Date;
     private DateTime toDate = DateTime.Now.Date;
 
-    protected override void OnInitialized() => Events.Changed += OnEventsChanged;
+    protected override async Task OnInitializedAsync()
+    {
+        canEdit = await Access.CanEditAsync(AuthState);
+        Events.Changed += OnEventsChanged;
+    }
+
+    private RenderFragment BreastCell(BabyEvent feed) =>
+        @<text>
+            @Display.ToLocal(feed.StartUtc).ToString("HH:mm")→@(feed.EndUtc is null
+                ? "…"
+                : Display.ToLocal(feed.EndUtc.Value).ToString("HH:mm"))
+            @if (feed.Duration is not null)
+            {
+                <span class="sub">@Display.Duration(feed.Duration.Value)</span>
+            }
+        </text>;
+
+    private RenderFragment BottleCell(BabyEvent bottle) =>
+        @<text>
+            @(bottle.AmountMl is > 0 ? $"{bottle.AmountMl}" : "–")
+            <span class="sub @(bottle.Milk == MilkKind.BreastMilk ? "bm" : "f")">
+                @(bottle.Milk == MilkKind.BreastMilk ? "BM" : "F")
+            </span>
+        </text>;
 
     private async Task OnRange(RangePicker.Selection range)
     {
@@ -139,6 +171,11 @@
     {
         editing = null;
 
+        if (!canEdit)
+        {
+            return;
+        }
+
         if (updated.Id == 0)
         {
             await Events.AddAsync(updated);
@@ -151,6 +188,12 @@
     private async Task DeleteEvent(int id)
     {
         editing = null;
+
+        if (!canEdit)
+        {
+            return;
+        }
+
         await Events.DeleteAsync(id);
     }
 

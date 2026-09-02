@@ -1,3 +1,7 @@
+using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Simplz.Babytracker.Components;
@@ -22,6 +26,34 @@ if (!string.IsNullOrEmpty(dataDirectory))
 
 builder.Services.AddDbContextFactory<AppDbContext>(options => options.UseSqlite(connectionString));
 builder.Services.AddSingleton<EventService>();
+
+// Keep the cookie-signing keys next to the database, so a redeploy does not sign everyone out.
+if (!string.IsNullOrEmpty(dataDirectory))
+{
+    builder.Services.AddDataProtection()
+        .PersistKeysToFileSystem(Directory.CreateDirectory(Path.Combine(dataDirectory, "keys")));
+}
+
+builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection(AuthOptions.SectionName));
+
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.Cookie.Name = ".Babytracker.Auth";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        options.LoginPath = "/login";
+        options.AccessDeniedPath = "/login";
+        options.ReturnUrlParameter = "returnUrl";
+
+        // A phone that has the app on its home screen should stay signed in for months.
+        options.ExpireTimeSpan = TimeSpan.FromDays(180);
+        options.SlidingExpiration = true;
+    });
+
+builder.Services.AddAuthorization();
+builder.Services.AddCascadingAuthenticationState();
 
 // Running behind a reverse proxy (nginx/Traefik/Caddy) that terminates TLS.
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
@@ -49,9 +81,28 @@ if (!app.Environment.IsDevelopment())
 
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 
+app.UseAuthentication();
+app.UseAuthorization();
 app.UseAntiforgery();
 
 app.MapGet("/healthz", () => Results.Ok("ok"));
+
+// A minimal endpoint is only checked automatically when it binds a form, so validate by hand —
+// otherwise any other site could sign the phone out with a hidden form post.
+app.MapPost("/logout", async (HttpContext http, IAntiforgery antiforgery) =>
+{
+    try
+    {
+        await antiforgery.ValidateRequestAsync(http);
+    }
+    catch (AntiforgeryValidationException)
+    {
+        return Results.BadRequest();
+    }
+
+    await http.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+    return Results.LocalRedirect("/login");
+});
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()

@@ -5,10 +5,13 @@ services:
     container_name: babytracker
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "4549:8080"
     environment:
       # Set this to your own timezone: it decides which day an entry is grouped under.
       TZ: Europe/Athens
+      # The two passwords. "parent" can log and edit entries, "doctor" only reads.
+      Auth__ParentPassword: parent
+      Auth__DoctorPassword: doctor
     volumes:
       # Named volume, so the SQLite file keeps the ownership the image gives it (uid 1654).
       # To keep the database next to the compose file instead, swap this for a bind mount:

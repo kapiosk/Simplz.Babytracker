@@ -17,8 +17,11 @@ else
                         <div class="notes">@e.Notes</div>
                     }
                 </div>
-                <button class="icon-btn" title="Edit" aria-label="Edit @Display.Label(e)"
-                        @onclick="() => OnEdit.InvokeAsync(e)"><Icon Name="pencil" /></button>
+                @if (CanEdit)
+                {
+                    <button class="icon-btn" title="Edit" aria-label="Edit @Display.Label(e)"
+                            @onclick="() => OnEdit.InvokeAsync(e)"><Icon Name="pencil" /></button>
+                }
             </li>
         }
     </ul>
@@ -27,6 +30,7 @@ else
 @code {
     [Parameter, EditorRequired] public IReadOnlyList<BabyEvent> Events { get; set; } = [];
     [Parameter] public EventCallback<BabyEvent> OnEdit { get; set; }
+    [Parameter] public bool CanEdit { get; set; }
     [Parameter] public bool ShowDate { get; set; }
     [Parameter] public string EmptyText { get; set; } = "Nothing logged yet.";
 

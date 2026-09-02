@@ -1,0 +1,86 @@
+@page "/login"
+@attribute [AllowAnonymous]
+@layout BareLayout
+@using System.ComponentModel.DataAnnotations
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@using Microsoft.Extensions.Options
+@inject IOptions<AuthOptions> Auth
+@inject NavigationManager Nav
+
+<PageTitle>Sign in · Baby Tracker</PageTitle>
+
+<div class="login">
+    <h1>Baby Tracker</h1>
+    <p class="login-sub">Enter the password to continue.</p>
+
+    <EditForm Model="Input" FormName="login" OnValidSubmit="SignIn" method="post">
+        <div class="field">
+            <label for="password">Password</label>
+            <InputText id="password" type="password" @bind-Value="Input!.Password"
+                       autocomplete="current-password" autocapitalize="off" autocorrect="off" />
+        </div>
+
+        @if (error is not null)
+        {
+            <p class="login-error" role="alert">@error</p>
+        }
+
+        <button type="submit" class="btn primary block">Sign in</button>
+    </EditForm>
+
+    <p class="login-note">
+        The parent password can log and edit entries. The doctor password opens the same
+        chart and report, read only.
+    </p>
+</div>
+
+@code {
+    [CascadingParameter] private HttpContext? HttpContext { get; set; }
+
+    [SupplyParameterFromForm] private LoginInput? Input { get; set; }
+
+    [SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
+
+    private string? error;
+
+    protected override void OnInitialized() => Input ??= new LoginInput();
+
+    private async Task SignIn()
+    {
+        var role = Auth.Value.RoleFor(Input!.Password);
+
+        if (role is null || HttpContext is null)
+        {
+            // Slow down anyone working through a password list; there is only one to guess.
+            await Task.Delay(TimeSpan.FromMilliseconds(750));
+            error = "That password doesn't match.";
+            Input.Password = "";
+            return;
+        }
+
+        var identity = new ClaimsIdentity(
+            [new Claim(ClaimTypes.Name, role), new Claim(ClaimTypes.Role, role)],
+            CookieAuthenticationDefaults.AuthenticationScheme);
+
+        await HttpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            new ClaimsPrincipal(identity),
+            new AuthenticationProperties { IsPersistent = true });
+
+        Nav.NavigateTo(Landing(role), forceLoad: true);
+    }
+
+    /// <summary>Back where they were heading, or the view that role actually came for.</summary>
+    private string Landing(string role) =>
+        IsLocal(ReturnUrl) ? ReturnUrl! : role == Roles.Doctor ? "chart" : "";
+
+    /// <summary>Only follow a return URL that stays on this site.</summary>
+    private static bool IsLocal(string? url) => url is ['/'] or ['/', not ('/' or '\\'), ..];
+
+    private sealed class LoginInput
+    {
+        [Required] public string Password { get; set; } = "";
+    }
+}

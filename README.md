@@ -2,6 +2,7 @@
 
 A small Blazor Server PWA for tracking a newborn: breast feeding (start/stop with a live timer),
 bottle feeding (formula or breast milk, with amount), poops, urine and vomits — plus a report view.
+It is behind a password: one for the parents, one that gives a doctor the same views read only.
 Data lives in a single SQLite file, and the whole thing ships as one Docker container.
 
 ## What it does
@@ -37,16 +38,33 @@ TIME    BREAST                  BOTTLE   💧  💩  🤮
 
 A breast feed and a bottle within 20 minutes of each other share a row (breast plus a top-up), and an
 output within 4 hours of a feed is recorded against that feed — so it's obvious which stool followed
-which feed. Every cell and every `+` is a button that opens that entry for editing.
+which feed. With the parent password every cell and every `+` is a button that opens that entry for editing.
 
 **Report** (`/report`) — today / 7 days / 30 days / custom range, with:
 
 - totals per type: feed count, total and average feeding time, bottle count and total ml split by milk type,
   nappy and vomit counts with a per-day average,
 - a day-by-day table covering every day of the range,
-- the full list of entries, each editable.
+- the full list of entries, each editable with the parent password.
 
 Both pages are live: log something on one phone and any other open phone updates itself.
+
+## Signing in
+
+There are no user accounts, only two shared passwords:
+
+| Password | What it gives |
+| --- | --- |
+| `parent` | Everything: logging, editing, deleting. Lands on **Track**. |
+| `doctor` | The same **Track**, **Chart** and **Report**, with every button that writes removed. Lands on **Chart**. |
+
+Read-only is not just hidden UI. The pages are rendered on the server, so a read-only visitor's page
+has no edit handlers in it at all, and each write path re-checks the role before touching the database.
+
+Change the passwords in `compose.yaml` (or with the `Auth__ParentPassword` and `Auth__DoctorPassword`
+environment variables). The sign-in cookie lasts 180 days and slides, so a phone with the app on its
+home screen stays signed in; the keys that sign it are kept in `/data/keys`, next to the database, so
+rebuilding the container does not sign everybody out.
 
 ## Running it
 
@@ -56,10 +74,11 @@ Both pages are live: log something on one phone and any other open phone updates
 docker compose up -d --build
 ```
 
-The app is then on <http://localhost:8080>. Two things to check in `compose.yaml` before the first run:
+The app is then on <http://localhost:4549>. Three things to check in `compose.yaml` before the first run:
 
+- `Auth__ParentPassword` / `Auth__DoctorPassword` — change them from the defaults.
 - `TZ` — set it to your own timezone. It decides which day an entry belongs to and what times are shown.
-- the port mapping, if 8080 is taken.
+- the port mapping, if 4549 is taken.
 
 The database lives in the `babytracker-data` volume as `/data/babytracker.db`. The container runs as a
 non-root user (uid 1654), and a named volume inherits that ownership, which is why it is the default.
@@ -89,7 +108,8 @@ Two caveats worth knowing:
 
 - **Serve it over HTTPS.** Browsers only offer installation (and only register the service worker) on
   `https://` origins or on `localhost`. Put the container behind a reverse proxy that terminates TLS —
-  the app already honours `X-Forwarded-Proto`/`X-Forwarded-For`.
+  the app already honours `X-Forwarded-Proto`/`X-Forwarded-For`. Over plain HTTP the password and the
+  sign-in cookie cross the network in the clear, so TLS matters here beyond installability.
 - **It is not an offline app.** Blazor Server renders over a live connection, so entries can only be logged
   while the phone can reach the server. The service worker caches the shell and shows a friendly
   "you're offline" page instead of a browser error; it deliberately never caches the app's HTML or its
@@ -103,7 +123,8 @@ Two caveats worth knowing:
 | `Services/EventService.cs` | All reads and writes, plus a `Changed` event that pushes updates to open pages |
 | `Services/Display.cs` | UTC↔local conversion and the shared label/duration formatting |
 | `Services/ChartGrouping.cs` | Rebuilds the flat log into paper-chart rows (feed + its outputs) |
-| `Components/Pages/` | `Home.razor` (the buttons), `Chart.razor`, `Report.razor` |
+| `Services/Auth.cs` | The two passwords, the roles, and the check the pages use before rendering anything that writes |
+| `Components/Pages/` | `Home.razor` (the buttons), `Chart.razor`, `Report.razor`, `Login.razor` |
 | `Components/` | `EventList`, `BottleDialog`, `EditEventDialog`, `TimeField`, `RangePicker`, `OutputMarks`, `Icon` |
 | `wwwroot/` | `app.css`, `manifest.webmanifest`, `service-worker.js`, `offline.html`, icons |
 

@@ -78,14 +78,18 @@
 </div>
 
 <div class="card">
-    <EventList Events="listed" ShowDate="true" OnEdit="e => editing = e" EmptyText="Nothing logged in this range." />
+    <EventList Events="listed" ShowDate="true" CanEdit="canEdit" OnEdit="e => editing = e"
+               EmptyText="Nothing logged in this range." />
     @if (events.Count > listed.Count)
     {
         <div class="empty">Showing the @listed.Count most recent of @events.Count entries — narrow the range to see the rest.</div>
     }
 </div>
 
-<button class="btn block subtle" @onclick="AddEarlier">+ Add an entry from earlier</button>
+@if (canEdit)
+{
+    <button class="btn block subtle" @onclick="AddEarlier">+ Add an entry from earlier</button>
+}
 
 @if (editing is not null)
 {
@@ -93,6 +97,9 @@
 }
 
 @code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    private bool canEdit;
     private DateTime fromDate = DateTime.Now.Date;
     private DateTime toDate = DateTime.Now.Date;
 
@@ -111,7 +118,11 @@
     private int formulaCount;
     private int breastMilkCount;
 
-    protected override void OnInitialized() => Events.Changed += OnEventsChanged;
+    protected override async Task OnInitializedAsync()
+    {
+        canEdit = await Access.CanEditAsync(AuthState);
+        Events.Changed += OnEventsChanged;
+    }
 
     private async Task OnRange(RangePicker.Selection range)
     {
@@ -185,6 +196,11 @@
     {
         editing = null;
 
+        if (!canEdit)
+        {
+            return;
+        }
+
         if (updated.Id == 0)
         {
             await Events.AddAsync(updated);
@@ -197,6 +213,12 @@
     private async Task DeleteEvent(int id)
     {
         editing = null;
+
+        if (!canEdit)
+        {
+            return;
+        }
+
         await Events.DeleteAsync(id);
     }
 
