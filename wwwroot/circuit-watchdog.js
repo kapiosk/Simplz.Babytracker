@@ -40,6 +40,11 @@
     // So a page has to prove it had a circuit before we will act on having lost one.
     let hadCircuit = false;
 
+    const loadedAt = Date.now();
+    let hiddenAt = 0;
+    let awayMs = 0;      // how long the page was off screen before it last came back
+    const MaxReports = 5;
+
     // ---------- the banner ----------
 
     function setBanner(text) {
@@ -130,7 +135,11 @@
 
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') {
+            awayMs = hiddenAt ? Date.now() - hiddenAt : 0;
+            hiddenAt = 0;
             checkSoon();
+        } else {
+            hiddenAt = Date.now();
         }
     });
     window.addEventListener('focus', checkSoon);
@@ -153,6 +162,62 @@
                 setBanner(null);
             }
         });
+    }
+
+    // ---------- telling the server when the page breaks ----------
+
+    // The error bar this reports on is raised by Blazor for an unhandled error, and when that
+    // error is on the server it is already in the log. When it is not — something failing in
+    // the browser — nothing reaches the log at all and the fault is invisible from the Pi. So
+    // the page says so itself, along with how long it had been away, because the reports are
+    // that this happens on coming back to it.
+
+    let reported = 0;
+
+    function report(kind, detail) {
+        if (reported >= MaxReports) {
+            return;
+        }
+        reported++;
+
+        try {
+            fetch('/clientlog', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    kind,
+                    detail: String(detail ?? '').slice(0, 1500),
+                    url: location.pathname,
+                    awayMs,
+                    ageMs: Date.now() - loadedAt,
+                    hadCircuit,
+                    blazorSaysDown
+                }),
+                keepalive: true
+            }).catch(() => { /* the page is already having a bad time; do not pile on */ });
+        } catch {
+            // ignore
+        }
+    }
+
+    window.addEventListener('error', event => {
+        report('window.onerror', (event.message || '') + ' @ ' + (event.filename || '') + ':' + (event.lineno || 0));
+    });
+
+    window.addEventListener('unhandledrejection', event => {
+        const reason = event.reason;
+        report('unhandledrejection', reason && reason.stack ? reason.stack : reason);
+    });
+
+    // Blazor shows this bar for an unhandled error, whichever side it came from, so it is the
+    // one signal that always coincides with what gets reported as "the app crashed".
+    const errorUi = document.getElementById('blazor-error-ui');
+    if (errorUi) {
+        new MutationObserver(() => {
+            if (getComputedStyle(errorUi).display !== 'none') {
+                report('blazor-error-ui shown', errorUi.textContent.trim().slice(0, 200));
+            }
+        }).observe(errorUi, { attributes: true, attributeFilter: ['style', 'class'] });
     }
 
     // ---------- the Reload buttons ----------
