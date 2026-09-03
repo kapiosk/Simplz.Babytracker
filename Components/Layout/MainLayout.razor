@@ -1,4 +1,5 @@
 @inherits LayoutComponentBase
+@inject BabyService Babies
 
 <header class="app-header">
     <div>
@@ -7,7 +8,15 @@
     </div>
 
     <div class="header-actions">
-        @* Deliberately not a Blazor @@onclick: this button is here for the times the circuit
+        <AuthorizeView>
+            <Authorized>
+                <NavLink class="icon-btn" href="babies" title="Babies" aria-label="Babies">
+                    <span class="ico"><Icon Name="baby" /></span>
+                </NavLink>
+            </Authorized>
+        </AuthorizeView>
+
+        @* Deliberately not a Blazor @onclick: this button is here for the times the circuit
            that would carry that click is the thing that is broken. wwwroot/circuit-watchdog.js
            handles data-reload in plain JavaScript. *@
         <button type="button" class="icon-btn" data-reload
@@ -29,6 +38,26 @@
         </AuthorizeView>
     </div>
 </header>
+
+@* One baby needs no switcher, and the buttons below are worth more than a row saying so. *@
+@if (babies.Count > 1)
+{
+    <AuthorizeView>
+        <Authorized>
+            <form class="baby-switch" action="baby" method="post">
+                <AntiforgeryToken />
+                <input type="hidden" name="returnUrl" value="@Here()" />
+                @foreach (var baby in babies)
+                {
+                    <button type="submit" name="babyId" value="@baby.Id"
+                            class="chip @(baby.Id == selected?.Id ? "on" : "")">
+                        @baby.Name
+                    </button>
+                }
+            </form>
+        </Authorized>
+    </AuthorizeView>
+}
 
 <main class="app-main">
     @Body
@@ -54,3 +83,25 @@
     <a href="." class="reload">Reload</a>
     <span class="dismiss">🗙</span>
 </div>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+
+    private List<Baby> babies = [];
+    private Baby? selected;
+
+    protected override async Task OnInitializedAsync()
+    {
+        babies = await Babies.ListAsync();
+        selected = await Babies.SelectedAsync(AuthState);
+    }
+
+    /// <summary>Where to come back to after switching, so the tap does not also lose your place.</summary>
+    private string Here()
+    {
+        var path = Nav.ToBaseRelativePath(Nav.Uri);
+        return string.IsNullOrEmpty(path) ? "/" : "/" + path;
+    }
+}

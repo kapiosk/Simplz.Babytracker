@@ -687,3 +687,22 @@ body { padding-top: var(--circuit-banner-h, 0px); }
     font: inherit;
     cursor: pointer;
 }
+
+/* ---------- babies ---------- */
+
+.baby-switch {
+    display: flex;
+    gap: .4rem;
+    overflow-x: auto;
+    margin: 0;
+    padding: .55rem 1rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    scrollbar-width: none;
+}
+
+.baby-switch::-webkit-scrollbar { display: none; }
+
+.baby-switch .chip { flex: 0 0 auto; }
+
+.baby-name { font-weight: 700; font-size: 1.05rem; }

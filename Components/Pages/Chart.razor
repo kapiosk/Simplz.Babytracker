@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @implements IDisposable
 @inject EventService Events
+@inject BabyService Babies
 @inject ILogger<Chart> Logger
 
 <PageTitle>Chart · Baby Tracker</PageTitle>
@@ -95,6 +96,7 @@
     [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
 
     private bool canEdit;
+    private Baby? baby;
     private List<ChartDay> days = [];
     private BabyEvent? editing;
     private DateTime fromDate = DateTime.Now.Date;
@@ -103,6 +105,7 @@
     protected override async Task OnInitializedAsync()
     {
         canEdit = await Access.CanEditAsync(AuthState);
+        baby = await Babies.SelectedAsync(AuthState);
         Events.Changed += OnEventsChanged;
     }
 
@@ -133,7 +136,12 @@
 
     private async Task Reload()
     {
-        var events = await Events.GetRangeAsync(Display.ToUtc(fromDate), Display.ToUtc(toDate.AddDays(1)));
+        if (baby is null)
+        {
+            return;
+        }
+
+        var events = await Events.GetRangeAsync(baby.Id, Display.ToUtc(fromDate), Display.ToUtc(toDate.AddDays(1)));
         days = ChartGrouping.Build(events);
     }
 
@@ -157,12 +165,21 @@
 
     private void AddEarlier() => editing = new BabyEvent
     {
+        BabyId = baby?.Id ?? 0,
         Kind = EventKind.BreastFeed,
         StartUtc = DateTime.UtcNow.AddMinutes(-15),
         EndUtc = DateTime.UtcNow
     };
 
-    private void OnEventsChanged() => _ = InvokeAsync(async () =>
+    private void OnEventsChanged(int babyId)
+    {
+        // Somebody logging something for the other baby is nothing to do with this page.
+        if (babyId != baby?.Id)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(async () =>
     {
         try
         {
@@ -176,13 +193,17 @@
             // error bar. The next change, or the reload button, will put the page right.
             Logger.LogError(ex, "Refreshing after a change to the event log failed.");
         }
-    });
+        });
+    }
 
     private async Task SaveEdit(BabyEvent updated)
     {
         editing = null;
 
-        if (!canEdit)
+        // A new entry carries the baby it belongs to; without one it would have nothing to
+        // point at. Cannot happen through the UI, but a foreign key violation here would show
+        // as the error bar rather than anything useful.
+        if (!canEdit || baby is null)
         {
             return;
         }
