@@ -101,6 +101,31 @@ app.UseAntiforgery();
 
 app.MapGet("/healthz", () => Results.Ok("ok"));
 
+// Where wwwroot/circuit-watchdog.js sends a failure that happened in the browser. An unhandled
+// error on the server is already logged; one in the page never reaches the Pi at all, which is
+// why "the app crashed" can leave no trace behind. Signed-in callers only, and small: this puts
+// text into the log, so it should not be something anyone passing by can fill.
+app.MapPost("/clientlog", async (HttpContext http, ILogger<Program> log) =>
+{
+    if (http.User.Identity?.IsAuthenticated != true
+        || !http.Request.HasJsonContentType())
+    {
+        return Results.Unauthorized();
+    }
+
+    var report = await http.Request.ReadFromJsonAsync<ClientLogEntry>();
+    if (report is null)
+    {
+        return Results.BadRequest();
+    }
+
+    log.LogError(
+        "Client-side failure: {Kind} on {Page} — {Detail} (page {AgeMs}ms old, off screen for {AwayMs}ms beforehand, circuit seen: {HadCircuit}, Blazor reported down: {BlazorSaysDown})",
+        report.Kind, report.Url, report.Detail, report.AgeMs, report.AwayMs, report.HadCircuit, report.BlazorSaysDown);
+
+    return Results.NoContent();
+});
+
 // A minimal endpoint is only checked automatically when it binds a form, so validate by hand —
 // otherwise any other site could sign the phone out with a hidden form post.
 app.MapPost("/logout", async (HttpContext http, IAntiforgery antiforgery) =>
@@ -161,3 +186,13 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.Run();
+
+/// <summary>What wwwroot/circuit-watchdog.js posts to /clientlog when the page breaks.</summary>
+internal sealed record ClientLogEntry(
+    string? Kind,
+    string? Detail,
+    string? Url,
+    long AwayMs,
+    long AgeMs,
+    bool HadCircuit,
+    bool BlazorSaysDown);
