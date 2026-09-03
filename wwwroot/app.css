@@ -706,3 +706,21 @@ body { padding-top: var(--circuit-banner-h, 0px); }
 .baby-switch .chip { flex: 0 0 auto; }
 
 .baby-name { font-weight: 700; font-size: 1.05rem; }
+
+.check {
+    display: flex;
+    align-items: flex-start;
+    gap: .6rem;
+    font-size: .85rem;
+    line-height: 1.5;
+    color: var(--text-dim);
+    cursor: pointer;
+}
+
+.check input {
+    flex: 0 0 auto;
+    width: 1.15rem;
+    height: 1.15rem;
+    margin: .1rem 0 0;
+    accent-color: var(--accent);
+}

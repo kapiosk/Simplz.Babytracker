@@ -8,8 +8,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     public DbSet<Baby> Babies => Set<Baby>();
 
+    public DbSet<AppSetting> Settings => Set<AppSetting>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<AppSetting>().HasKey(x => x.Key);
+
         modelBuilder.Entity<BabyEvent>(e =>
         {
             // Every query is for one baby at a time, so the baby leads each index.

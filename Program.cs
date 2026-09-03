@@ -40,6 +40,7 @@ if (!string.IsNullOrEmpty(dataDirectory))
 builder.Services.AddDbContextFactory<AppDbContext>(options => options.UseSqlite(connectionString));
 builder.Services.AddSingleton<EventService>();
 builder.Services.AddSingleton<BabyService>();
+builder.Services.AddSingleton<Credentials>();
 
 // Keep the cookie-signing keys next to the database, so a redeploy does not sign everyone out.
 if (!string.IsNullOrEmpty(dataDirectory))
@@ -64,6 +65,27 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         // A phone that has the app on its home screen should stay signed in for months.
         options.ExpireTimeSpan = TimeSpan.FromDays(180);
         options.SlidingExpiration = true;
+
+        // Changing a password leaves the phones already signed in alone, which is what you
+        // want at 3am. "Sign out every device" instead moves the stamp, and every cookie
+        // issued under the old one — including this one — stops being worth anything.
+        options.Events.OnValidatePrincipal = async context =>
+        {
+            var credentials = context.HttpContext.RequestServices.GetRequiredService<Credentials>();
+            var current = await credentials.StampAsync();
+
+            if (current is null)
+            {
+                // Nobody has ever asked to be signed out everywhere; nothing to check against.
+                return;
+            }
+
+            if (context.Principal?.FindFirst(Credentials.StampClaim)?.Value != current)
+            {
+                context.RejectPrincipal();
+                await context.HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            }
+        };
     });
 
 builder.Services.AddAuthorization();
@@ -146,7 +168,7 @@ app.MapPost("/logout", async (HttpContext http, IAntiforgery antiforgery) =>
 // Switching baby re-issues the sign-in cookie with a different baby claim. A plain form post
 // rather than anything interactive, so it still works when the circuit does not — and the
 // redirect lands back on whichever page asked, already showing the other baby.
-app.MapPost("/baby", async (HttpContext http, IAntiforgery antiforgery, BabyService babies) =>
+app.MapPost("/baby", async (HttpContext http, IAntiforgery antiforgery, BabyService babies, Credentials credentials) =>
 {
     try
     {
@@ -174,7 +196,7 @@ app.MapPost("/baby", async (HttpContext http, IAntiforgery antiforgery, BabyServ
 
     await http.SignInAsync(
         CookieAuthenticationDefaults.AuthenticationScheme,
-        BabyService.Principal(role, babyId, CookieAuthenticationDefaults.AuthenticationScheme),
+        await credentials.PrincipalAsync(role, babyId, CookieAuthenticationDefaults.AuthenticationScheme),
         new AuthenticationProperties { IsPersistent = true });
 
     var back = form["returnUrl"].ToString();
