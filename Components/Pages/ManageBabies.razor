@@ -1,0 +1,114 @@
+@page "/babies"
+@rendermode InteractiveServer
+@implements IDisposable
+@inject BabyService Babies
+@inject NavigationManager Nav
+@inject ILogger<ManageBabies> Logger
+
+<PageTitle>Babies · Baby Tracker</PageTitle>
+
+<h1>Babies</h1>
+
+<p class="login-note" style="margin-top:0">
+    @(babies.Count == 1
+        ? "Everything logged so far belongs to this one. Add another and a row of names appears under the header to switch between them."
+        : "Tap a name under the header to switch. Each baby keeps its own log, chart and report.")
+</p>
+
+@foreach (var baby in babies)
+{
+    <div class="card" @key="baby.Id">
+        @if (canEdit)
+        {
+            <div class="field" style="margin-bottom:.4rem">
+                <label for="name-@baby.Id">Name</label>
+                <input id="name-@baby.Id" type="text" maxlength="60" value="@baby.Name"
+                       @onchange="e => Rename(baby.Id, e.Value?.ToString())" />
+            </div>
+        }
+        else
+        {
+            <div class="baby-name">@baby.Name</div>
+        }
+
+        <div class="hint-line">@Summary(baby.Id)</div>
+    </div>
+}
+
+@if (canEdit)
+{
+    <div class="card">
+        <div class="field">
+            <label for="new-baby">Add a baby</label>
+            <input id="new-baby" type="text" maxlength="60" placeholder="Name"
+                   @bind="newName" @bind:event="oninput" />
+        </div>
+        <button class="btn block" disabled="@string.IsNullOrWhiteSpace(newName)" @onclick="Add">Add</button>
+    </div>
+}
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    private bool canEdit;
+    private List<Baby> babies = [];
+    private Dictionary<int, int> counts = [];
+    private string newName = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        canEdit = await Access.CanEditAsync(AuthState);
+        await Reload();
+        Babies.Changed += OnBabiesChanged;
+    }
+
+    private async Task Reload()
+    {
+        babies = await Babies.ListAsync();
+        counts = await Babies.EntryCountsAsync();
+    }
+
+    private string Summary(int babyId) =>
+        counts.TryGetValue(babyId, out var n) && n > 0
+            ? n == 1 ? "1 entry" : $"{n} entries"
+            : "nothing logged yet";
+
+    private void OnBabiesChanged() => _ = InvokeAsync(async () =>
+    {
+        try
+        {
+            await Reload();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Refreshing the list of babies failed.");
+        }
+    });
+
+    private async Task Rename(int id, string? name)
+    {
+        if (canEdit)
+        {
+            await Babies.RenameAsync(id, name ?? "");
+            await Reload();
+        }
+    }
+
+    private async Task Add()
+    {
+        if (!canEdit || string.IsNullOrWhiteSpace(newName))
+        {
+            return;
+        }
+
+        await Babies.AddAsync(newName);
+        newName = "";
+
+        // The switcher sits in the header, which is rendered on the server and will not know
+        // about a new baby until the page is fetched again.
+        Nav.NavigateTo(Nav.Uri, forceLoad: true);
+    }
+
+    public void Dispose() => Babies.Changed -= OnBabiesChanged;
+}

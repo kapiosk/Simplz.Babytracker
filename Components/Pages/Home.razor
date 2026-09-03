@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @implements IAsyncDisposable
 @inject EventService Events
+@inject BabyService Babies
 @inject ILogger<Home> Logger
 
 <PageTitle>Baby Tracker</PageTitle>
@@ -110,6 +111,7 @@ else
     [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
 
     private bool canEdit;
+    private Baby? baby;
     private List<BabyEvent> recent = [];
     private BabyEvent? running;
     private BabyEvent? editing;
@@ -123,6 +125,7 @@ else
     protected override async Task OnInitializedAsync()
     {
         canEdit = await Access.CanEditAsync(AuthState);
+        baby = await Babies.SelectedAsync(AuthState);
         await Reload();
         Events.Changed += OnEventsChanged;
     }
@@ -159,7 +162,15 @@ else
         }
     }
 
-    private void OnEventsChanged() => _ = InvokeAsync(async () =>
+    private void OnEventsChanged(int babyId)
+    {
+        // Somebody logging something for the other baby is nothing to do with this page.
+        if (babyId != baby?.Id)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(async () =>
     {
         try
         {
@@ -173,12 +184,18 @@ else
             // error bar. The next change, or the reload button, will put the page right.
             Logger.LogError(ex, "Refreshing after a change to the event log failed.");
         }
-    });
+        });
+    }
 
     private async Task Reload()
     {
-        recent = await Events.GetRecentAsync(12);
-        running = recent.FirstOrDefault(e => e.IsRunning) ?? await Events.GetRunningBreastFeedAsync();
+        if (baby is null)
+        {
+            return;
+        }
+
+        recent = await Events.GetRecentAsync(baby.Id, 12);
+        running = recent.FirstOrDefault(e => e.IsRunning) ?? await Events.GetRunningBreastFeedAsync(baby.Id);
     }
 
     private string LastHint(EventKind kind)
@@ -189,12 +206,12 @@ else
 
     private async Task StartBreastFeed()
     {
-        if (!canEdit)
+        if (!canEdit || baby is null)
         {
             return;
         }
 
-        await Events.StartBreastFeedAsync();
+        await Events.StartBreastFeedAsync(baby.Id);
         Toast("Breast feed started");
     }
 
@@ -212,12 +229,12 @@ else
 
     private async Task Log(EventKind kind)
     {
-        if (!canEdit)
+        if (!canEdit || baby is null)
         {
             return;
         }
 
-        await Events.LogAsync(kind);
+        await Events.LogAsync(baby!.Id, kind);
         Toast($"{Display.Label(kind)} logged");
     }
 
@@ -225,18 +242,19 @@ else
     {
         showBottle = false;
 
-        if (!canEdit)
+        if (!canEdit || baby is null)
         {
             return;
         }
 
-        await Events.LogBottleAsync(entry.Milk, entry.AmountMl, entry.Notes);
+        await Events.LogBottleAsync(baby!.Id, entry.Milk, entry.AmountMl, entry.Notes);
         Toast(entry.AmountMl is > 0 ? $"Bottle · {entry.AmountMl} ml" : "Bottle logged");
     }
 
     /// <summary>Opens the editor on a blank entry, pre-filled as a feed that just finished.</summary>
     private void AddEarlier() => editing = new BabyEvent
     {
+        BabyId = baby?.Id ?? 0,
         Kind = EventKind.BreastFeed,
         StartUtc = DateTime.UtcNow.AddMinutes(-15),
         EndUtc = DateTime.UtcNow
@@ -246,7 +264,10 @@ else
     {
         editing = null;
 
-        if (!canEdit)
+        // A new entry carries the baby it belongs to; without one it would have nothing to
+        // point at. Cannot happen through the UI, but a foreign key violation here would show
+        // as the error bar rather than anything useful.
+        if (!canEdit || baby is null)
         {
             return;
         }

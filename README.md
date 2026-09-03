@@ -2,6 +2,7 @@
 
 A small Blazor Server PWA for tracking a newborn: breast feeding (start/stop with a live timer),
 bottle feeding (formula or breast milk, with amount), poops, urine and vomits — plus a report view.
+More than one baby can be tracked, each with its own log.
 It is behind a password: one for the parents, one that gives a doctor the same views read only.
 Data lives in a single SQLite file, and the whole thing ships as one Docker container.
 
@@ -48,6 +49,21 @@ which feed. With the parent password every cell and every `+` is a button that o
 - the full list of entries, each editable with the parent password.
 
 Both pages are live: log something on one phone and any other open phone updates itself.
+
+## More than one baby
+
+Every entry belongs to a baby. With one baby nothing changes — the header stays as it was and the
+five buttons keep the screen. Add a second on **Babies** (the person icon in the header) and a row
+of names appears under the header: tap one to switch, and **Track**, **Chart** and **Report** all
+follow. Each baby keeps its own log entirely; nothing is ever shown side by side.
+
+The choice rides on the sign-in cookie as a claim rather than in a cookie of its own. The pages are
+rendered on the server and already receive the signed-in user, so the selection arrives with them —
+and it lasts as long as the sign-in does, which is to say months. Switching is a form post, not a
+button on the circuit, so it still works when the connection does not. It is per device: one phone
+can sit on one baby while another sits on the other.
+
+The doctor password sees both, read only, and can switch between them.
 
 ## Signing in
 
@@ -141,13 +157,14 @@ Three things deal with that:
 
 | Path | What's in it |
 | --- | --- |
-| `Data/` | `BabyEvent` entity, `AppDbContext`, EF Core migrations |
+| `Data/` | `Baby` and `BabyEvent` entities, `AppDbContext`, EF Core migrations |
 | `Services/EventService.cs` | All reads and writes, plus a `Changed` event that pushes updates to open pages |
 | `Services/Display.cs` | UTC↔local conversion and the shared label/duration formatting |
 | `Services/ChartGrouping.cs` | Rebuilds the flat log into paper-chart rows (feed + its outputs) |
+| `Services/BabyService.cs` | The babies, and which one a device has selected (a claim on the sign-in cookie) |
 | `Services/CircuitPing.cs` | The round trip the browser makes to check its own circuit is still alive |
 | `Services/Auth.cs` | The two passwords, the roles, and the check the pages use before rendering anything that writes |
-| `Components/Pages/` | `Home.razor` (the buttons), `Chart.razor`, `Report.razor`, `Login.razor` |
+| `Components/Pages/` | `Home.razor` (the buttons), `Chart.razor`, `Report.razor`, `ManageBabies.razor`, `Login.razor` |
 | `Components/` | `EventList`, `BottleDialog`, `EditEventDialog`, `TimeField`, `RangePicker`, `OutputMarks`, `Icon` |
 | `wwwroot/` | `app.css`, `circuit-watchdog.js`, `manifest.webmanifest`, `service-worker.js`, `offline.html`, icons |
 

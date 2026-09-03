@@ -5,8 +5,11 @@ namespace Simplz.Babytracker.Services;
 
 public class EventService(IDbContextFactory<AppDbContext> factory, ILogger<EventService> log)
 {
-    /// <summary>Raised whenever the event log changes, so open circuits can refresh.</summary>
-    public event Action? Changed;
+    /// <summary>
+    /// Raised whenever the event log changes, so open circuits can refresh. Carries the baby the
+    /// change was for, so a page showing the other one does not reload for nothing.
+    /// </summary>
+    public event Action<int>? Changed;
 
     /// <summary>
     /// The subscribers are pages belonging to other people's circuits. Invoked as one delegate,
@@ -15,7 +18,7 @@ public class EventService(IDbContextFactory<AppDbContext> factory, ILogger<Event
     /// error bar for a problem that was never theirs. So each page is notified on its own, and
     /// a page that cannot cope keeps that to itself.
     /// </summary>
-    private void NotifyChanged()
+    private void NotifyChanged(int babyId)
     {
         if (Changed is not { } subscribers)
         {
@@ -26,7 +29,7 @@ public class EventService(IDbContextFactory<AppDbContext> factory, ILogger<Event
         {
             try
             {
-                ((Action)subscriber)();
+                ((Action<int>)subscriber)(babyId);
             }
             catch (Exception ex)
             {
@@ -35,28 +38,28 @@ public class EventService(IDbContextFactory<AppDbContext> factory, ILogger<Event
         }
     }
 
-    public async Task<BabyEvent?> GetRunningBreastFeedAsync(CancellationToken ct = default)
+    public async Task<BabyEvent?> GetRunningBreastFeedAsync(int babyId, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         return await db.Events
-            .Where(e => e.Kind == EventKind.BreastFeed && e.EndUtc == null)
+            .Where(e => e.BabyId == babyId && e.Kind == EventKind.BreastFeed && e.EndUtc == null)
             .OrderByDescending(e => e.StartUtc)
             .FirstOrDefaultAsync(ct);
     }
 
-    public async Task<BabyEvent> StartBreastFeedAsync(CancellationToken ct = default)
+    public async Task<BabyEvent> StartBreastFeedAsync(int babyId, CancellationToken ct = default)
     {
-        var running = await GetRunningBreastFeedAsync(ct);
+        var running = await GetRunningBreastFeedAsync(babyId, ct);
         if (running is not null)
         {
             return running;
         }
 
-        var ev = new BabyEvent { Kind = EventKind.BreastFeed, StartUtc = DateTime.UtcNow };
+        var ev = new BabyEvent { BabyId = babyId, Kind = EventKind.BreastFeed, StartUtc = DateTime.UtcNow };
         await using var db = await factory.CreateDbContextAsync(ct);
         db.Events.Add(ev);
         await db.SaveChangesAsync(ct);
-        NotifyChanged();
+        NotifyChanged(babyId);
         return ev;
     }
 
@@ -71,24 +74,25 @@ public class EventService(IDbContextFactory<AppDbContext> factory, ILogger<Event
 
         ev.EndUtc = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
-        NotifyChanged();
+        NotifyChanged(ev.BabyId);
     }
 
     /// <summary>Logs a point-in-time event (poop, urine, vomit).</summary>
-    public async Task<BabyEvent> LogAsync(EventKind kind, string? notes = null, CancellationToken ct = default)
+    public async Task<BabyEvent> LogAsync(int babyId, EventKind kind, string? notes = null, CancellationToken ct = default)
     {
-        var ev = new BabyEvent { Kind = kind, StartUtc = DateTime.UtcNow, Notes = notes };
+        var ev = new BabyEvent { BabyId = babyId, Kind = kind, StartUtc = DateTime.UtcNow, Notes = notes };
         await using var db = await factory.CreateDbContextAsync(ct);
         db.Events.Add(ev);
         await db.SaveChangesAsync(ct);
-        NotifyChanged();
+        NotifyChanged(babyId);
         return ev;
     }
 
-    public async Task<BabyEvent> LogBottleAsync(MilkKind milk, int? amountMl, string? notes = null, CancellationToken ct = default)
+    public async Task<BabyEvent> LogBottleAsync(int babyId, MilkKind milk, int? amountMl, string? notes = null, CancellationToken ct = default)
     {
         var ev = new BabyEvent
         {
+            BabyId = babyId,
             Kind = EventKind.BottleFeed,
             StartUtc = DateTime.UtcNow,
             Milk = milk,
@@ -98,7 +102,7 @@ public class EventService(IDbContextFactory<AppDbContext> factory, ILogger<Event
         await using var db = await factory.CreateDbContextAsync(ct);
         db.Events.Add(ev);
         await db.SaveChangesAsync(ct);
-        NotifyChanged();
+        NotifyChanged(babyId);
         return ev;
     }
 
@@ -109,24 +113,25 @@ public class EventService(IDbContextFactory<AppDbContext> factory, ILogger<Event
         await using var db = await factory.CreateDbContextAsync(ct);
         db.Events.Add(ev);
         await db.SaveChangesAsync(ct);
-        NotifyChanged();
+        NotifyChanged(ev.BabyId);
         return ev;
     }
 
-    public async Task<List<BabyEvent>> GetRecentAsync(int count = 20, CancellationToken ct = default)
+    public async Task<List<BabyEvent>> GetRecentAsync(int babyId, int count = 20, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         return await db.Events
+            .Where(e => e.BabyId == babyId)
             .OrderByDescending(e => e.StartUtc)
             .Take(count)
             .ToListAsync(ct);
     }
 
-    public async Task<List<BabyEvent>> GetRangeAsync(DateTime fromUtc, DateTime toUtc, CancellationToken ct = default)
+    public async Task<List<BabyEvent>> GetRangeAsync(int babyId, DateTime fromUtc, DateTime toUtc, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         return await db.Events
-            .Where(e => e.StartUtc >= fromUtc && e.StartUtc < toUtc)
+            .Where(e => e.BabyId == babyId && e.StartUtc >= fromUtc && e.StartUtc < toUtc)
             .OrderByDescending(e => e.StartUtc)
             .ToListAsync(ct);
     }
@@ -146,6 +151,7 @@ public class EventService(IDbContextFactory<AppDbContext> factory, ILogger<Event
             return;
         }
 
+        // The baby an entry belongs to is not something the editor changes.
         ev.Kind = updated.Kind;
         ev.StartUtc = updated.StartUtc;
         ev.EndUtc = updated.EndUtc;
@@ -153,13 +159,21 @@ public class EventService(IDbContextFactory<AppDbContext> factory, ILogger<Event
         ev.AmountMl = updated.AmountMl;
         ev.Notes = updated.Notes;
         await db.SaveChangesAsync(ct);
-        NotifyChanged();
+        NotifyChanged(ev.BabyId);
     }
 
     public async Task DeleteAsync(int id, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
+
+        // Read the baby first: after the delete there is nothing left to ask.
+        var babyId = await db.Events.Where(e => e.Id == id).Select(e => e.BabyId).FirstOrDefaultAsync(ct);
+        if (babyId == 0)
+        {
+            return;
+        }
+
         await db.Events.Where(e => e.Id == id).ExecuteDeleteAsync(ct);
-        NotifyChanged();
+        NotifyChanged(babyId);
     }
 }

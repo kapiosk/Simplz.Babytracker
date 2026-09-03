@@ -60,13 +60,11 @@
             return;
         }
 
-        var identity = new ClaimsIdentity(
-            [new Claim(ClaimTypes.Name, role), new Claim(ClaimTypes.Role, role)],
-            CookieAuthenticationDefaults.AuthenticationScheme);
-
+        // No baby claim yet: whoever has just signed in has not chosen one, and the pages fall
+        // back to the first until they tap a different chip.
         await HttpContext.SignInAsync(
             CookieAuthenticationDefaults.AuthenticationScheme,
-            new ClaimsPrincipal(identity),
+            BabyService.Principal(role, babyId: null, CookieAuthenticationDefaults.AuthenticationScheme),
             new AuthenticationProperties { IsPersistent = true });
 
         Nav.NavigateTo(Landing(role), forceLoad: true);

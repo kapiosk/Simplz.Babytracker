@@ -21,6 +21,9 @@ public class BabyEvent
 {
     public int Id { get; set; }
 
+    /// <summary>Which baby the entry belongs to. See <see cref="Baby"/>.</summary>
+    public int BabyId { get; set; }
+
     public EventKind Kind { get; set; }
 
     /// <summary>When the event happened (UTC). For breast feeding this is the moment feeding started.</summary>

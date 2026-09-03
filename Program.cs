@@ -39,6 +39,7 @@ if (!string.IsNullOrEmpty(dataDirectory))
 
 builder.Services.AddDbContextFactory<AppDbContext>(options => options.UseSqlite(connectionString));
 builder.Services.AddSingleton<EventService>();
+builder.Services.AddSingleton<BabyService>();
 
 // Keep the cookie-signing keys next to the database, so a redeploy does not sign everyone out.
 if (!string.IsNullOrEmpty(dataDirectory))
@@ -115,6 +116,44 @@ app.MapPost("/logout", async (HttpContext http, IAntiforgery antiforgery) =>
 
     await http.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
     return Results.LocalRedirect("/login");
+});
+
+// Switching baby re-issues the sign-in cookie with a different baby claim. A plain form post
+// rather than anything interactive, so it still works when the circuit does not — and the
+// redirect lands back on whichever page asked, already showing the other baby.
+app.MapPost("/baby", async (HttpContext http, IAntiforgery antiforgery, BabyService babies) =>
+{
+    try
+    {
+        await antiforgery.ValidateRequestAsync(http);
+    }
+    catch (AntiforgeryValidationException)
+    {
+        return Results.BadRequest();
+    }
+
+    if (http.User.Identity?.IsAuthenticated != true)
+    {
+        return Results.LocalRedirect("/login");
+    }
+
+    var form = await http.Request.ReadFormAsync();
+    var role = http.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+
+    if (role is null
+        || !int.TryParse(form["babyId"], out var babyId)
+        || await babies.GetAsync(babyId) is null)
+    {
+        return Results.BadRequest();
+    }
+
+    await http.SignInAsync(
+        CookieAuthenticationDefaults.AuthenticationScheme,
+        BabyService.Principal(role, babyId, CookieAuthenticationDefaults.AuthenticationScheme),
+        new AuthenticationProperties { IsPersistent = true });
+
+    var back = form["returnUrl"].ToString();
+    return Results.LocalRedirect(back is ['/'] or ['/', not ('/' or '\\'), ..] ? back : "/");
 });
 
 app.MapStaticAssets();

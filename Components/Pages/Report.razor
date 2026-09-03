@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @implements IDisposable
 @inject EventService Events
+@inject BabyService Babies
 @inject ILogger<Report> Logger
 
 <PageTitle>Report · Baby Tracker</PageTitle>
@@ -101,6 +102,7 @@
     [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
 
     private bool canEdit;
+    private Baby? baby;
     private DateTime fromDate = DateTime.Now.Date;
     private DateTime toDate = DateTime.Now.Date;
 
@@ -122,6 +124,7 @@
     protected override async Task OnInitializedAsync()
     {
         canEdit = await Access.CanEditAsync(AuthState);
+        baby = await Babies.SelectedAsync(AuthState);
         Events.Changed += OnEventsChanged;
     }
 
@@ -133,7 +136,12 @@
 
     private async Task Reload()
     {
-        events = await Events.GetRangeAsync(Display.ToUtc(fromDate), Display.ToUtc(toDate.AddDays(1)));
+        if (baby is null)
+        {
+            return;
+        }
+
+        events = await Events.GetRangeAsync(baby.Id, Display.ToUtc(fromDate), Display.ToUtc(toDate.AddDays(1)));
 
         listed = events.Take(MaxListed).ToList();
 
@@ -180,7 +188,15 @@
         return spanDays == 1 ? "today" : $"{(double)count / spanDays:0.#} per day";
     }
 
-    private void OnEventsChanged() => _ = InvokeAsync(async () =>
+    private void OnEventsChanged(int babyId)
+    {
+        // Somebody logging something for the other baby is nothing to do with this page.
+        if (babyId != baby?.Id)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(async () =>
     {
         try
         {
@@ -194,10 +210,12 @@
             // error bar. The next change, or the reload button, will put the page right.
             Logger.LogError(ex, "Refreshing after a change to the event log failed.");
         }
-    });
+        });
+    }
 
     private void AddEarlier() => editing = new BabyEvent
     {
+        BabyId = baby?.Id ?? 0,
         Kind = EventKind.BreastFeed,
         StartUtc = DateTime.UtcNow.AddMinutes(-15),
         EndUtc = DateTime.UtcNow
@@ -207,7 +225,10 @@
     {
         editing = null;
 
-        if (!canEdit)
+        // A new entry carries the baby it belongs to; without one it would have nothing to
+        // point at. Cannot happen through the UI, but a foreign key violation here would show
+        // as the error bar rather than anything useful.
+        if (!canEdit || baby is null)
         {
             return;
         }

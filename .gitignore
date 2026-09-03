@@ -1,7 +1,13 @@
 bin/
 obj/
-data/
 App_Data/
+
+# The ./data bind mount from compose.yaml. Ignored by content rather than as a folder:
+# git matches ignore patterns case-insensitively on Windows, so a plain "data/" also
+# swallowed the Data/ source folder, and anything new added there — an entity, a
+# migration — silently never got committed. The database itself is covered below.
+/data/keys/
+
 *.db
 *.db-shm
 *.db-wal
