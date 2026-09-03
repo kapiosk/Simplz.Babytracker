@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @implements IAsyncDisposable
 @inject EventService Events
+@inject ILogger<Home> Logger
 
 <PageTitle>Baby Tracker</PageTitle>
 
@@ -160,8 +161,18 @@ else
 
     private void OnEventsChanged() => _ = InvokeAsync(async () =>
     {
-        await Reload();
-        StateHasChanged();
+        try
+        {
+            await Reload();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            // This runs because somebody else logged something, not because of anything done
+            // here, and an exception escaping it would take this page's circuit down with the
+            // error bar. The next change, or the reload button, will put the page right.
+            Logger.LogError(ex, "Refreshing after a change to the event log failed.");
+        }
     });
 
     private async Task Reload()

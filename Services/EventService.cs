@@ -3,12 +3,37 @@ using Simplz.Babytracker.Data;
 
 namespace Simplz.Babytracker.Services;
 
-public class EventService(IDbContextFactory<AppDbContext> factory)
+public class EventService(IDbContextFactory<AppDbContext> factory, ILogger<EventService> log)
 {
     /// <summary>Raised whenever the event log changes, so open circuits can refresh.</summary>
     public event Action? Changed;
 
-    private void NotifyChanged() => Changed?.Invoke();
+    /// <summary>
+    /// The subscribers are pages belonging to other people's circuits. Invoked as one delegate,
+    /// the first of them to throw would stop the rest being told and surface as an unhandled
+    /// error in the circuit of whoever happened to write the entry — their phone showing the
+    /// error bar for a problem that was never theirs. So each page is notified on its own, and
+    /// a page that cannot cope keeps that to itself.
+    /// </summary>
+    private void NotifyChanged()
+    {
+        if (Changed is not { } subscribers)
+        {
+            return;
+        }
+
+        foreach (var subscriber in subscribers.GetInvocationList())
+        {
+            try
+            {
+                ((Action)subscriber)();
+            }
+            catch (Exception ex)
+            {
+                log.LogError(ex, "A page failed to handle a change to the event log.");
+            }
+        }
+    }
 
     public async Task<BabyEvent?> GetRunningBreastFeedAsync(CancellationToken ct = default)
     {
