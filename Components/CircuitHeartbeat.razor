@@ -1,0 +1,66 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+@code {
+    // Nothing to render: this only exists to say, from the server, that the circuit is alive.
+    //
+    // The page cannot safely ask the question itself. Calling into .NET from JavaScript while
+    // the connection is between states throws inside Blazor's own send, and Blazor treats a
+    // failed interop call as an unrecoverable circuit error and shows the error bar — so the
+    // asking was what broke the page. Going the other way is harmless: on a dead circuit the
+    // call fails here, on the server, where it is caught and means nothing to anybody.
+    //
+    // wwwroot/circuit-watchdog.js watches for the beats stopping.
+
+    private const int IntervalSeconds = 5;
+
+    private CancellationTokenSource? beating;
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender && beating is null)
+        {
+            beating = new CancellationTokenSource();
+            _ = BeatAsync(beating.Token);
+        }
+    }
+
+    private async Task BeatAsync(CancellationToken ct)
+    {
+        try
+        {
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(IntervalSeconds));
+
+            // One straight away, so a page that has just loaded does not look dead for a
+            // whole interval before its first beat arrives.
+            await JS.InvokeVoidAsync("babytrackerBeat", ct);
+
+            while (await timer.WaitForNextTickAsync(ct))
+            {
+                await JS.InvokeVoidAsync("babytrackerBeat", ct);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // The page has gone.
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit went with it, which is precisely what the silence is meant to say.
+        }
+        catch (JSException)
+        {
+            // The browser could not run it; nothing here is worth taking the circuit down for.
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (beating is not null)
+        {
+            await beating.CancelAsync();
+            beating.Dispose();
+            beating = null;
+        }
+    }
+}

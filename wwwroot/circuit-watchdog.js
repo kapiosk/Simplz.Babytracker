@@ -7,38 +7,42 @@
 // nothing, and no error to explain it.
 //
 // Blazor does notice on its own, but only once its 30 second timeout expires, and a phone
-// waking from sleep throttles the very timers that would fire it. So instead of waiting,
-// this file asks the question directly: a tiny round trip over the circuit (CircuitPing on
-// the server) that either comes back or does not.
+// waking from sleep throttles the very timers that would fire it. So the server says so
+// instead: CircuitHeartbeat calls in every few seconds, and this watches for the beats
+// stopping.
 //
-//   it answers      -> nothing is wrong, carry on
-//   it does not     -> rejoin the circuit, and reload the page if that fails
+//   beats arriving  -> nothing is wrong, carry on
+//   beats stopped   -> rejoin the circuit, and reload the page if that fails
 //
-// Asked whenever the page comes back on screen, when the network returns, and every so
-// often while the page is being looked at. Plus the Reload buttons, wired up here rather
-// than as Blazor click handlers — the circuit is exactly what is broken when they matter.
+// It has to go that way round. This file used to ask the question itself, calling into .NET
+// to see whether anything answered, and that was what broke the app: interop from the browser
+// while the connection is between states throws inside Blazor's own send, Blazor treats a
+// failed interop call as an unrecoverable circuit error, and up comes the error bar. The
+// check was causing the crash it was looking for. Nothing here calls into .NET any more.
+//
+// Plus the Reload buttons, wired up here rather than as Blazor click handlers — the circuit
+// is exactly what is broken when they matter.
 
 (function () {
     'use strict';
 
-    const AssemblyName = 'Simplz.Babytracker';
-
-    const ProbeTimeoutMs = 5000;   // a round trip on the same wifi is milliseconds
-    const ProbeEveryMs = 20000;    // ...but only while the page is actually on screen
-    const SettleMs = 1200;         // give Blazor's own reconnect a moment to get there first
+    const BeatEveryMs = 5000;     // must match CircuitHeartbeat.razor
+    const SilentForMs = 17000;   // three beats missed before anything is assumed
+    const CheckEveryMs = 3000;
+    const SettleMs = 1500;       // give Blazor's own reconnect a moment to get there first
 
     // While Blazor knows it is disconnected it shows its own dialog and runs its own retry
     // loop; two of us calling reconnect() at once helps nobody. We only step in for the case
     // Blazor cannot see, which is the circuit that is dead without having said so.
     let blazorSaysDown = false;
-    let probing = false;
     let recovering = false;
 
-    // Not every page has a circuit to lose: the sign-in page, the error page and the
-    // not-found page are rendered once on the server and never become interactive, and there
-    // the probe fails because there is no dispatcher rather than because anything is wrong.
-    // So a page has to prove it had a circuit before we will act on having lost one.
+    // Not every page has a circuit to lose: the sign-in page, the error page and the not-found
+    // page are rendered once on the server and never become interactive, so no beat will ever
+    // arrive there and none is missing. A page has to have had a circuit before we act on
+    // having lost one.
     let hadCircuit = false;
+    let lastBeat = 0;
 
     const loadedAt = Date.now();
     let hiddenAt = 0;
@@ -70,17 +74,28 @@
 
     // ---------- is the circuit there? ----------
 
-    function probe() {
-        let timer;
-        const timedOut = new Promise(resolve => {
-            timer = setTimeout(() => resolve(false), ProbeTimeoutMs);
-        });
+    // The server says so, every few seconds, through CircuitHeartbeat. The page deliberately
+    // does not ask: calling into .NET from here while the connection is between states throws
+    // inside Blazor's own send, and Blazor treats a failed interop call as an unrecoverable
+    // circuit error and shows the error bar. Asking the question was breaking the page.
+    window.babytrackerBeat = function () {
+        lastBeat = Date.now();
+        hadCircuit = true;
+        if (!recovering) {
+            setBanner(null);
+        }
+    };
 
-        // A dead circuit either rejects straight away or never answers at all, so race both.
-        const answered = DotNet.invokeMethodAsync(AssemblyName, 'Ping').then(() => true, () => false);
-
-        return Promise.race([answered, timedOut]).finally(() => clearTimeout(timer));
-    }
+    // Read-only, for looking at what the watchdog thinks from a browser console. Blazor caches
+    // the JS function it resolves for a beat, so wrapping babytrackerBeat to count them does not
+    // work — ask here instead.
+    window.babytrackerStatus = () => ({
+        hadCircuit,
+        msSinceLastBeat: lastBeat ? Date.now() - lastBeat : null,
+        blazorSaysDown,
+        recovering,
+        deadAfterMs: SilentForMs
+    });
 
     async function recover() {
         if (recovering) {
@@ -92,21 +107,22 @@
         try {
             let rejoined = false;
             try {
+                // Blazor's own, and made for exactly this: safe to call when it is down.
                 rejoined = await Blazor.reconnect();
             } catch {
                 rejoined = false; // server unreachable
             }
 
-            // reconnect() resolving true only means the socket is back; ask again before
-            // trusting it, so we never leave the page looking fine when it still is not.
-            if (rejoined && await probe()) {
+            if (rejoined) {
+                // Give the beats a chance to start again before believing it.
+                lastBeat = Date.now();
                 setBanner(null);
                 return;
             }
 
-            // The circuit is gone for good (or the server was restarted and no longer has
-            // it). Reloading gets a working page back; nothing is lost, because a running
-            // feed lives in the database rather than in the page.
+            // The circuit is gone for good, or the server was restarted and no longer has it.
+            // Reloading gets a working page back; nothing is lost, because a running feed
+            // lives in the database rather than in the page.
             location.reload();
         } finally {
             recovering = false;
@@ -114,22 +130,19 @@
     }
 
     async function check() {
-        if (document.hidden || blazorSaysDown || probing || recovering || typeof DotNet === 'undefined') {
+        if (document.hidden || blazorSaysDown || recovering || !hadCircuit) {
             return;
         }
-        probing = true;
-        try {
-            if (await probe()) {
-                hadCircuit = true;
-            } else if (hadCircuit) {
-                await recover();
-            }
-        } finally {
-            probing = false;
+
+        if (Date.now() - lastBeat > SilentForMs) {
+            await recover();
         }
     }
 
-    const checkSoon = () => setTimeout(check, SettleMs);
+    // Never left as a bare promise: an unhandled rejection here is itself something the page
+    // would have to report, and this is the code that does the reporting.
+    const run = () => { check().catch(() => { }); };
+    const checkSoon = () => setTimeout(run, SettleMs);
 
     // ---------- when to ask ----------
 
@@ -149,7 +162,7 @@
             checkSoon();
         }
     });
-    setInterval(check, ProbeEveryMs);
+    setInterval(run, CheckEveryMs);
 
     // ---------- Blazor's own view of things ----------
 
