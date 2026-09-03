@@ -8,8 +8,20 @@ public static class Display
     public static DateTime ToLocal(DateTime utc) =>
         TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), TimeZoneInfo.Local);
 
-    public static DateTime ToUtc(DateTime local) =>
-        TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(local, DateTimeKind.Unspecified), TimeZoneInfo.Local);
+    public static DateTime ToUtc(DateTime local)
+    {
+        var wallClock = DateTime.SpecifyKind(local, DateTimeKind.Unspecified);
+
+        // On the morning the clocks go forward an hour simply does not exist locally, and
+        // converting a reading from inside it throws. Someone writing down 03:30 that morning
+        // meant 04:30 — the clock had already moved on — so read it against standard time.
+        if (TimeZoneInfo.Local.IsInvalidTime(wallClock))
+        {
+            return DateTime.SpecifyKind(wallClock - TimeZoneInfo.Local.BaseUtcOffset, DateTimeKind.Utc);
+        }
+
+        return TimeZoneInfo.ConvertTimeToUtc(wallClock, TimeZoneInfo.Local);
+    }
 
     public static string Label(BabyEvent e) => e.Kind switch
     {
