@@ -10,6 +10,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     public DbSet<AppSetting> Settings => Set<AppSetting>();
 
+    public DbSet<EventMedia> Media => Set<EventMedia>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<AppSetting>().HasKey(x => x.Key);
@@ -23,6 +25,18 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasOne<Baby>()
                 .WithMany()
                 .HasForeignKey(x => x.BabyId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<EventMedia>(e =>
+        {
+            e.HasIndex(x => x.BabyEventId);
+
+            // Deleting an entry takes its attachments with it. The rows go by this cascade; the
+            // files on disk are MediaService's job, which is why EventService asks it first.
+            e.HasOne<BabyEvent>()
+                .WithMany()
+                .HasForeignKey(x => x.BabyEventId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

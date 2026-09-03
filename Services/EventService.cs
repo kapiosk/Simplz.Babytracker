@@ -3,7 +3,7 @@ using Simplz.Babytracker.Data;
 
 namespace Simplz.Babytracker.Services;
 
-public class EventService(IDbContextFactory<AppDbContext> factory, ILogger<EventService> log)
+public class EventService(IDbContextFactory<AppDbContext> factory, MediaService media, ILogger<EventService> log)
 {
     /// <summary>
     /// Raised whenever the event log changes, so open circuits can refresh. Carries the baby the
@@ -172,6 +172,10 @@ public class EventService(IDbContextFactory<AppDbContext> factory, ILogger<Event
         {
             return;
         }
+
+        // The rows go with the entry through the foreign key, but the files would be left on
+        // the disk with nothing pointing at them, so they go first.
+        await media.DeleteForEventAsync(id, ct);
 
         await db.Events.Where(e => e.Id == id).ExecuteDeleteAsync(ct);
         NotifyChanged(babyId);

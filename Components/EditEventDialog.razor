@@ -47,6 +47,61 @@
             <input id="edit-notes" type="text" maxlength="500" @bind="notes" />
         </div>
 
+        <div class="field">
+            <label>Photos and clips</label>
+
+            @if (IsNew)
+            {
+                <div class="hint-line">Save the entry first, then reopen it to attach anything.</div>
+            }
+            else
+            {
+                @if (media.Count > 0)
+                {
+                    <div class="media-strip">
+                        @foreach (var item in media)
+                        {
+                            <div class="media-item" @key="item.Id">
+                                <a href="@($"/media/{item.Id}")" target="_blank" rel="noopener">
+                                    @if (item.IsVideo)
+                                    {
+                                        <video src="@($"/media/{item.Id}")" preload="metadata" muted></video>
+                                    }
+                                    else
+                                    {
+                                        <img src="@($"/media/{item.Id}")" alt="@(item.OriginalName ?? "attachment")" loading="lazy" />
+                                    }
+                                </a>
+
+                                @if (CanEdit)
+                                {
+                                    <button type="button" class="media-remove" title="Remove"
+                                            @onclick="() => RemoveMedia(item.Id)">🗙</button>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+
+                @if (CanEdit)
+                {
+                    <AntiforgeryToken />
+                    <input id="@fileInputId" class="file-input" type="file" multiple
+                           accept="image/*,video/*" @onchange="Upload" disabled="@uploading" />
+
+                    <div class="hint-line">
+                        @(uploading
+                            ? "Uploading…"
+                            : mediaMessage ?? "Up to 25 MB a photo, 200 MB a clip. Stored as they are — nothing is re-encoded.")
+                    </div>
+                }
+                else if (media.Count == 0)
+                {
+                    <div class="hint-line">Nothing attached.</div>
+                }
+            }
+        </div>
+
         @if (confirmDelete)
         {
             <div class="row-btns">
@@ -70,6 +125,13 @@
 
 @code {
     [Parameter, EditorRequired] public BabyEvent Event { get; set; } = default!;
+
+    /// <summary>The doctor password can look at what is attached, and nothing more.</summary>
+    [Parameter] public bool CanEdit { get; set; } = true;
+
+    [Inject] private MediaService Media { get; set; } = default!;
+
+    [Inject] private IJSRuntime JS { get; set; } = default!;
     [Parameter] public EventCallback OnCancel { get; set; }
     [Parameter] public EventCallback<BabyEvent> OnSave { get; set; }
     [Parameter] public EventCallback<int> OnDelete { get; set; }
@@ -82,6 +144,11 @@
     private string? notes;
     private bool confirmDelete;
     private int loadedId = -1;
+
+    private List<EventMedia> media = [];
+    private bool uploading;
+    private string? mediaMessage;
+    private readonly string fileInputId = $"attach-{Guid.NewGuid():N}";
 
     private bool IsNew => Event.Id == 0;
 
@@ -125,7 +192,67 @@
         amount = Event.AmountMl;
         notes = Event.Notes;
         confirmDelete = false;
+        mediaMessage = null;
+        media = [];
+
+        if (Event.Id != 0)
+        {
+            _ = ReloadMediaAsync();
+        }
     }
+
+    private async Task ReloadMediaAsync()
+    {
+        var loaded = await Media.ForEventAsync(Event.Id);
+        media = loaded;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task Upload()
+    {
+        if (!CanEdit || Event.Id == 0)
+        {
+            return;
+        }
+
+        uploading = true;
+        mediaMessage = null;
+
+        try
+        {
+            var result = await JS.InvokeAsync<UploadResult>("babytrackerUpload", fileInputId, Event.Id);
+
+            mediaMessage = result.Error is not null
+                ? result.Error
+                : result.Refused > 0
+                    ? $"Added {result.Added}. {result.Refused} refused — too big, or not a photo or a clip."
+                    : result.Added > 0 ? $"Added {result.Added}." : "Nothing was added.";
+
+            await ReloadMediaAsync();
+        }
+        catch (Exception)
+        {
+            mediaMessage = "The upload did not finish.";
+        }
+        finally
+        {
+            uploading = false;
+        }
+    }
+
+    private async Task RemoveMedia(int id)
+    {
+        if (!CanEdit)
+        {
+            return;
+        }
+
+        await Media.DeleteAsync(id);
+        mediaMessage = null;
+        await ReloadMediaAsync();
+    }
+
+    private sealed record UploadResult(int Added, int Refused, string? Error);
 
     private Task Save()
     {

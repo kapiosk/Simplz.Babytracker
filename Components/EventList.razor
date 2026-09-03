@@ -1,3 +1,5 @@
+@implements IDisposable
+
 @if (Events.Count == 0)
 {
     <div class="empty">@EmptyText</div>
@@ -16,6 +18,27 @@ else
                     {
                         <div class="notes">@e.Notes</div>
                     }
+
+                    @* Shown to the read-only password too: a doctor being able to look at the
+                       photograph is most of the reason for taking one. *@
+                    @if (media.TryGetValue(e.Id, out var attached) && attached.Count > 0)
+                    {
+                        <div class="media-strip small">
+                            @foreach (var item in attached)
+                            {
+                                <a class="media-item" href="@($"/media/{item.Id}")" target="_blank" rel="noopener" @key="item.Id">
+                                    @if (item.IsVideo)
+                                    {
+                                        <video src="@($"/media/{item.Id}")" preload="metadata" muted></video>
+                                    }
+                                    else
+                                    {
+                                        <img src="@($"/media/{item.Id}")" alt="attachment" loading="lazy" />
+                                    }
+                                </a>
+                            }
+                        </div>
+                    }
                 </div>
                 @if (CanEdit)
                 {
@@ -28,11 +51,48 @@ else
 }
 
 @code {
+    [Inject] private MediaService Media { get; set; } = default!;
+
     [Parameter, EditorRequired] public IReadOnlyList<BabyEvent> Events { get; set; } = [];
     [Parameter] public EventCallback<BabyEvent> OnEdit { get; set; }
     [Parameter] public bool CanEdit { get; set; }
     [Parameter] public bool ShowDate { get; set; }
     [Parameter] public string EmptyText { get; set; } = "Nothing logged yet.";
+
+    private Dictionary<int, List<EventMedia>> media = [];
+    private string loadedFor = "";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Only when the entries on show actually change, not on every re-render.
+        var signature = string.Join(',', Events.Select(e => e.Id));
+        if (signature == loadedFor)
+        {
+            return;
+        }
+
+        loadedFor = signature;
+        await LoadMediaAsync();
+    }
+
+    protected override void OnInitialized() => Media.Changed += OnMediaChanged;
+
+    private void OnMediaChanged(int eventId) => _ = InvokeAsync(async () =>
+    {
+        if (Events.Any(e => e.Id == eventId))
+        {
+            await LoadMediaAsync();
+            StateHasChanged();
+        }
+    });
+
+    private async Task LoadMediaAsync()
+    {
+        var ids = Events.Select(e => e.Id).ToList();
+        media = ids.Count == 0 ? [] : await Media.ForEventsAsync(ids);
+    }
+
+    public void Dispose() => Media.Changed -= OnMediaChanged;
 
     private string Meta(BabyEvent e)
     {
