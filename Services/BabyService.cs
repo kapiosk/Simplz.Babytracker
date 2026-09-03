@@ -128,24 +128,4 @@ public sealed class BabyService(IDbContextFactory<AppDbContext> factory, ILogger
             }
         }
     }
-
-    /// <summary>
-    /// The claims a signed-in device carries: its role, and the baby it is looking at. Used both
-    /// when signing in and when switching baby, so the two can never drift apart.
-    /// </summary>
-    public static ClaimsPrincipal Principal(string role, int? babyId, string scheme)
-    {
-        var claims = new List<Claim>
-        {
-            new(ClaimTypes.Name, role),
-            new(ClaimTypes.Role, role)
-        };
-
-        if (babyId is { } id)
-        {
-            claims.Add(new Claim(ClaimType, id.ToString()));
-        }
-
-        return new ClaimsPrincipal(new ClaimsIdentity(claims, scheme));
-    }
 }

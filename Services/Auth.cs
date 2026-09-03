@@ -12,9 +12,9 @@ public static class Roles
 }
 
 /// <summary>
-/// The whole authentication model: one shared password per role, read from the <c>Auth</c>
-/// configuration section. The parent password logs and edits entries, the doctor password
-/// gives the same views without any way to change anything.
+/// The passwords the container was started with, from the <c>Auth</c> configuration section.
+/// These are the passwords until somebody changes one in the app, after which the stored one
+/// wins — see <see cref="Credentials"/>, which is what decides who a password lets in.
 /// </summary>
 public sealed class AuthOptions
 {
@@ -23,25 +23,8 @@ public sealed class AuthOptions
     public string ParentPassword { get; set; } = "parent";
     public string DoctorPassword { get; set; } = "doctor";
 
-    /// <summary>The role a password unlocks, or <c>null</c> when it matches neither.</summary>
-    public string? RoleFor(string? password)
-    {
-        if (string.IsNullOrEmpty(password))
-        {
-            return null;
-        }
-
-        // Parent is checked first, so setting both passwords to the same value keeps full access.
-        if (Matches(password, ParentPassword))
-        {
-            return Roles.Parent;
-        }
-
-        return Matches(password, DoctorPassword) ? Roles.Doctor : null;
-    }
-
     /// <summary>Compared in fixed time so the answer does not leak the password one character at a time.</summary>
-    private static bool Matches(string given, string expected) =>
+    public static bool MatchesPlain(string given, string expected) =>
         !string.IsNullOrEmpty(expected)
         && CryptographicOperations.FixedTimeEquals(
             Encoding.UTF8.GetBytes(given),

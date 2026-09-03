@@ -77,10 +77,20 @@ There are no user accounts, only two shared passwords:
 Read-only is not just hidden UI. The pages are rendered on the server, so a read-only visitor's page
 has no edit handlers in it at all, and each write path re-checks the role before touching the database.
 
-Change the passwords in `compose.yaml` (or with the `Auth__ParentPassword` and `Auth__DoctorPassword`
-environment variables). The sign-in cookie lasts 180 days and slides, so a phone with the app on its
-home screen stays signed in; the keys that sign it are kept in `/data/keys`, next to the database, so
-rebuilding the container does not sign everybody out.
+The container starts with the passwords in `compose.yaml` (or the `Auth__ParentPassword` and
+`Auth__DoctorPassword` environment variables). Either can then be changed from **Passwords**, linked
+from the Babies screen — a password set there is stored hashed (PBKDF2) in the database and wins over
+the configured one, so the value in `compose.yaml` becomes only the starting point. Changing one asks
+for the current parent password first, so an unlocked phone left on a table is not enough on its own.
+
+The sign-in cookie lasts 180 days and slides, so a phone with the app on its home screen stays signed
+in; the keys that sign it are kept in `/data/keys`, next to the database, so rebuilding the container
+does not sign everybody out.
+
+Because of that, **changing a password does not sign anyone out** — a phone already signed in stays
+signed in for months whatever the password becomes. When that is the point of changing it, tick *sign
+out every device*, which moves a stamp the cookies are issued under and makes every one of them,
+including the one doing the asking, worthless.
 
 ## Running it
 
@@ -157,14 +167,15 @@ Three things deal with that:
 
 | Path | What's in it |
 | --- | --- |
-| `Data/` | `Baby` and `BabyEvent` entities, `AppDbContext`, EF Core migrations |
+| `Data/` | `Baby`, `BabyEvent` and `AppSetting` entities, `AppDbContext`, EF Core migrations |
 | `Services/EventService.cs` | All reads and writes, plus a `Changed` event that pushes updates to open pages |
 | `Services/Display.cs` | UTC↔local conversion and the shared label/duration formatting |
 | `Services/ChartGrouping.cs` | Rebuilds the flat log into paper-chart rows (feed + its outputs) |
 | `Services/BabyService.cs` | The babies, and which one a device has selected (a claim on the sign-in cookie) |
 | `Services/CircuitPing.cs` | The round trip the browser makes to check its own circuit is still alive |
-| `Services/Auth.cs` | The two passwords, the roles, and the check the pages use before rendering anything that writes |
-| `Components/Pages/` | `Home.razor` (the buttons), `Chart.razor`, `Report.razor`, `ManageBabies.razor`, `Login.razor` |
+| `Services/Auth.cs` | The roles, the configured passwords, and the check the pages use before rendering anything that writes |
+| `Services/Credentials.cs` | Which password lets you in: stored and hashed if it has been changed, from the configuration if not |
+| `Components/Pages/` | `Home.razor` (the buttons), `Chart.razor`, `Report.razor`, `ManageBabies.razor`, `Password.razor`, `Login.razor` |
 | `Components/` | `EventList`, `BottleDialog`, `EditEventDialog`, `TimeField`, `RangePicker`, `OutputMarks`, `Icon` |
 | `wwwroot/` | `app.css`, `circuit-watchdog.js`, `manifest.webmanifest`, `service-worker.js`, `offline.html`, icons |
 

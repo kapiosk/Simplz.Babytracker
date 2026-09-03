@@ -6,7 +6,7 @@
 @using Microsoft.AspNetCore.Authentication
 @using Microsoft.AspNetCore.Authentication.Cookies
 @using Microsoft.Extensions.Options
-@inject IOptions<AuthOptions> Auth
+@inject Credentials Credentials
 @inject NavigationManager Nav
 
 <PageTitle>Sign in · Baby Tracker</PageTitle>
@@ -49,7 +49,7 @@
 
     private async Task SignIn()
     {
-        var role = Auth.Value.RoleFor(Input!.Password);
+        var role = await Credentials.RoleForAsync(Input!.Password);
 
         if (role is null || HttpContext is null)
         {
@@ -64,7 +64,7 @@
         // back to the first until they tap a different chip.
         await HttpContext.SignInAsync(
             CookieAuthenticationDefaults.AuthenticationScheme,
-            BabyService.Principal(role, babyId: null, CookieAuthenticationDefaults.AuthenticationScheme),
+            await Credentials.PrincipalAsync(role, babyId: null, CookieAuthenticationDefaults.AuthenticationScheme),
             new AuthenticationProperties { IsPersistent = true });
 
         Nav.NavigateTo(Landing(role), forceLoad: true);
