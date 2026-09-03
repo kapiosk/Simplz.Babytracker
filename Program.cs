@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Simplz.Babytracker.Components;
@@ -41,6 +42,18 @@ builder.Services.AddDbContextFactory<AppDbContext>(options => options.UseSqlite(
 builder.Services.AddSingleton<EventService>();
 builder.Services.AddSingleton<BabyService>();
 builder.Services.AddSingleton<Credentials>();
+
+// Attachments live beside the database, so one folder is the whole backup.
+builder.Services.AddSingleton(sp => new MediaService(
+    sp.GetRequiredService<IDbContextFactory<AppDbContext>>(),
+    Path.Combine(dataDirectory ?? ".", "media"),
+    sp.GetRequiredService<ILogger<MediaService>>()));
+
+// A video is far past the 128MB a multipart form will take by default.
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = MediaService.MaxVideoBytes + (8 * 1024 * 1024);
+});
 
 // Keep the cookie-signing keys next to the database, so a redeploy does not sign everyone out.
 if (!string.IsNullOrEmpty(dataDirectory))
@@ -202,6 +215,81 @@ app.MapPost("/baby", async (HttpContext http, IAntiforgery antiforgery, BabyServ
     var back = form["returnUrl"].ToString();
     return Results.LocalRedirect(back is ['/'] or ['/', not ('/' or '\\'), ..] ? back : "/");
 });
+
+// Uploading an attachment. A real multipart post from the browser rather than anything going
+// over the circuit: Blazor would carry the bytes through SignalR in small pieces, which is slow
+// for a photo and hopeless for a video, and it is the circuit that is least reliable here.
+app.MapPost("/media", async (HttpContext http, IAntiforgery antiforgery, EventService events, MediaService media) =>
+{
+    // Raised before anything reads the body, validating the token included — the default cap
+    // is 30MB and would refuse a video before the request was ever looked at.
+    if (http.Features.Get<IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } size)
+    {
+        size.MaxRequestBodySize = MediaService.MaxVideoBytes + (8 * 1024 * 1024);
+    }
+
+    // Checked by hand: an endpoint is only validated automatically when it binds a form as a
+    // parameter, and this one reads it itself.
+    try
+    {
+        await antiforgery.ValidateRequestAsync(http);
+    }
+    catch (AntiforgeryValidationException)
+    {
+        return Results.BadRequest();
+    }
+
+    if (!http.User.IsInRole(Roles.Parent))
+    {
+        return Results.Forbid();
+    }
+
+    var form = await http.Request.ReadFormAsync();
+
+    if (!int.TryParse(form["eventId"], out var eventId) || await events.GetAsync(eventId) is null)
+    {
+        return Results.BadRequest();
+    }
+
+    var added = 0;
+    var refused = 0;
+
+    foreach (var file in form.Files)
+    {
+        await using var stream = file.OpenReadStream();
+        var saved = await media.AddAsync(eventId, stream, file.ContentType ?? "", file.FileName);
+
+        if (saved is null)
+        {
+            refused++;
+        }
+        else
+        {
+            added++;
+        }
+    }
+
+    return Results.Ok(new { added, refused });
+});
+
+// Serving one back. Behind the password like everything else, and readable by the doctor role,
+// which is rather the point of photographing a stool in the first place.
+app.MapGet("/media/{id:int}", async (int id, MediaService media) =>
+{
+    if (await media.GetAsync(id) is not { } item)
+    {
+        return Results.NotFound();
+    }
+
+    var path = media.PathFor(item);
+    if (!File.Exists(path))
+    {
+        return Results.NotFound();
+    }
+
+    // Ranges matter: without them a video will not seek, and some browsers will not play at all.
+    return Results.File(File.OpenRead(path), item.ContentType, enableRangeProcessing: true);
+}).RequireAuthorization();
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()

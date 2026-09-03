@@ -50,6 +50,30 @@ which feed. With the parent password every cell and every `+` is a button that o
 
 Both pages are live: log something on one phone and any other open phone updates itself.
 
+## Photos and clips
+
+The pencil on any entry opens the editor, and at the bottom of it is somewhere to attach photos
+and video — a stool worth showing a doctor, mostly. They appear as thumbnails under the entry in
+the recent log and on the report, and tapping one opens it full size.
+
+The read-only password sees them too. That is the point: a doctor being able to look at the
+photograph is most of the reason for taking one. It cannot add or remove any.
+
+- Up to **25 MB** a photo and **200 MB** a clip, stored exactly as they arrive — a Pi is no place
+  to be re-encoding video, so nothing is resized or transcoded.
+- The upload is an ordinary form post rather than anything travelling over the circuit. Blazor
+  would carry the bytes through SignalR in small pieces, which is slow for a photo and hopeless
+  for a video, and the circuit is the least reliable thing here.
+- Files live in `/data/media` beside the database, named by a generated id rather than anything
+  the phone sent, so a copy of `/data` is still the whole backup. Deleting an entry deletes its
+  files with it.
+- They are served through `/media/{id}`, which is behind the password like every other page —
+  not a public folder. **Serve the app over HTTPS** before there are photographs of a child on
+  it; over plain HTTP they cross the network in the clear like everything else.
+
+An entry has to exist before anything can be attached to it, so a new one is saved first and then
+reopened.
+
 ## More than one baby
 
 Every entry belongs to a baby. With one baby nothing changes — the header stays as it was and the
@@ -167,19 +191,22 @@ Three things deal with that:
 
 | Path | What's in it |
 | --- | --- |
-| `Data/` | `Baby`, `BabyEvent` and `AppSetting` entities, `AppDbContext`, EF Core migrations |
+| `Data/` | `Baby`, `BabyEvent`, `EventMedia` and `AppSetting` entities, `AppDbContext`, EF Core migrations |
 | `Services/EventService.cs` | All reads and writes, plus a `Changed` event that pushes updates to open pages |
 | `Services/Display.cs` | UTC↔local conversion and the shared label/duration formatting |
 | `Services/ChartGrouping.cs` | Rebuilds the flat log into paper-chart rows (feed + its outputs) |
 | `Services/BabyService.cs` | The babies, and which one a device has selected (a claim on the sign-in cookie) |
+| `Services/MediaService.cs` | The photos and clips: the files on the volume and the rows that point at them |
 | `Services/CircuitPing.cs` | The round trip the browser makes to check its own circuit is still alive |
 | `Services/Auth.cs` | The roles, the configured passwords, and the check the pages use before rendering anything that writes |
 | `Services/Credentials.cs` | Which password lets you in: stored and hashed if it has been changed, from the configuration if not |
 | `Components/Pages/` | `Home.razor` (the buttons), `Chart.razor`, `Report.razor`, `ManageBabies.razor`, `Password.razor`, `Login.razor` |
 | `Components/` | `EventList`, `BottleDialog`, `EditEventDialog`, `TimeField`, `RangePicker`, `OutputMarks`, `Icon` |
-| `wwwroot/` | `app.css`, `circuit-watchdog.js`, `manifest.webmanifest`, `service-worker.js`, `offline.html`, icons |
+| `wwwroot/` | `app.css`, `circuit-watchdog.js`, `media-upload.js`, `manifest.webmanifest`, `service-worker.js`, `offline.html`, icons |
 
-Times are stored in UTC and rendered in the server's local timezone (`TZ`).
+Times are stored in UTC and rendered in the server's local timezone (`TZ`). Everything that has to
+survive a rebuild is under `/data`: the database, the attachments in `media/`, and the keys that
+sign the cookie in `keys/`.
 
 ## Changing the schema
 

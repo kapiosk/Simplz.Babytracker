@@ -89,7 +89,7 @@
 
 @if (editing is not null)
 {
-    <EditEventDialog Event="editing" OnCancel="() => editing = null" OnSave="SaveEdit" OnDelete="DeleteEvent" />
+    <EditEventDialog Event="editing" CanEdit="canEdit" OnCancel="() => editing = null" OnSave="SaveEdit" OnDelete="DeleteEvent" />
 }
 
 @code {
