@@ -97,6 +97,42 @@
         deadAfterMs: SilentForMs
     });
 
+    // Survives the reload, which is the point: without it a fault that reappears on the fresh
+    // page would send it round again immediately.
+    const RecoveredKey = 'babytracker.recoveredAt';
+    const RecoveredWithinMs = 30000;
+
+    function recentlyRecovered() {
+        try {
+            return Date.now() - Number(sessionStorage.getItem(RecoveredKey) || 0) < RecoveredWithinMs;
+        } catch {
+            return false;   // private browsing, storage disabled: treat it as the first time
+        }
+    }
+
+    function markRecovered() {
+        try {
+            sessionStorage.setItem(RecoveredKey, String(Date.now()));
+        } catch {
+            // Nothing to do; the worst case is one extra reload.
+        }
+    }
+
+    // Separate from the heartbeat's recovery, and deliberately blunter. That one rejoins first
+    // because the page state is still good and worth keeping. This one runs after Blazor has
+    // declared an unhandled error, and at that point its own idea of the circuit is not worth
+    // trusting — so the page goes and comes back, which is what the bar asks for anyway.
+    function recoverFromErrorBar() {
+        if (recovering || recentlyRecovered()) {
+            return;
+        }
+
+        recovering = true;
+        setBanner('Something went wrong — reloading…');
+        markRecovered();
+        location.reload();
+    }
+
     async function recover() {
         if (recovering) {
             return;
@@ -123,6 +159,7 @@
             // The circuit is gone for good, or the server was restarted and no longer has it.
             // Reloading gets a working page back; nothing is lost, because a running feed
             // lives in the database rather than in the page.
+            markRecovered();
             location.reload();
         } finally {
             recovering = false;
@@ -147,12 +184,22 @@
     // ---------- when to ask ----------
 
     document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') {
-            awayMs = hiddenAt ? Date.now() - hiddenAt : 0;
-            hiddenAt = 0;
-            checkSoon();
-        } else {
+        if (document.visibilityState !== 'visible') {
             hiddenAt = Date.now();
+            return;
+        }
+
+        awayMs = hiddenAt ? Date.now() - hiddenAt : 0;
+        hiddenAt = 0;
+
+        // Away long enough for the beats to have stopped: rejoin now rather than after a
+        // settling period. Blazor refreshes its root components the moment the page comes
+        // back, and if the connection died while it was hidden that send throws and puts the
+        // error bar up — so the less time it spends holding a dead connection, the better.
+        if (awayMs > BeatEveryMs * 2) {
+            run();
+        } else {
+            checkSoon();
         }
     });
     window.addEventListener('focus', checkSoon);
@@ -227,9 +274,17 @@
     const errorUi = document.getElementById('blazor-error-ui');
     if (errorUi) {
         new MutationObserver(() => {
-            if (getComputedStyle(errorUi).display !== 'none') {
-                report('blazor-error-ui shown', errorUi.textContent.trim().slice(0, 200));
+            if (getComputedStyle(errorUi).display === 'none') {
+                return;
             }
+
+            report('blazor-error-ui shown', errorUi.textContent.trim().slice(0, 200));
+
+            // The bar means Blazor has given up on the circuit, and the entry in the issue
+            // tracker for that is "you need to refresh the page". So refresh it. Once only:
+            // an error that comes back on the reloaded page is a real fault and reloading at
+            // it forever would be worse than leaving the bar up with its own Reload link.
+            recoverFromErrorBar();
         }).observe(errorUi, { attributes: true, attributeFilter: ['style', 'class'] });
     }
 
