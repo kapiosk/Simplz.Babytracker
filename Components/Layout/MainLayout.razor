@@ -59,6 +59,17 @@
     </AuthorizeView>
 }
 
+@* Rendered hidden; wwwroot/whats-new.js shows it unless this phone has read this version. *@
+<AuthorizeView>
+    <Authorized>
+        <div id="whats-new" data-version="@Changelog.Current.Version" hidden>
+            <span class="msg">Updated to @Changelog.Current.Version</span>
+            <a href="whats-new">What's new</a>
+            <button type="button" data-dismiss title="Dismiss" aria-label="Dismiss">🗙</button>
+        </div>
+    </Authorized>
+</AuthorizeView>
+
 <main class="app-main">
     @Body
 </main>

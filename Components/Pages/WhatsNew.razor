@@ -1,0 +1,33 @@
+@page "/whats-new"
+
+@* No render mode: nothing here needs a circuit, so it still reads on a page that has lost one. *@
+
+<PageTitle>What's new · Baby Tracker</PageTitle>
+
+<h1>What's new</h1>
+
+<p class="login-note" style="margin-top:0">
+    Running version @Changelog.Current.Version, updated
+    @Display.ToLocal(Changelog.RunningSinceUtc).ToString("dddd d MMMM 'at' HH:mm").
+</p>
+
+@foreach (var release in Changelog.Releases)
+{
+    <div class="card release" @key="release.Version">
+        <div class="release-head">
+            <span class="release-version">@release.Version</span>
+            @if (release.Version == Changelog.Current.Version)
+            {
+                <span class="role">Current</span>
+            }
+            <span class="release-date">@release.Released.ToString("d MMM yyyy")</span>
+        </div>
+
+        <ul class="release-changes">
+            @foreach (var change in release.Changes)
+            {
+                <li>@change</li>
+            }
+        </ul>
+    </div>
+}
