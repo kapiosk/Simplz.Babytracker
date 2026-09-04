@@ -195,6 +195,22 @@ Three things deal with that:
   circuits are kept on the server for 15 minutes instead of 3, so a phone that was locked for a
   while gets its own session back rather than a reload.
 
+## Saying what changed
+
+`Services/Changelog.cs` is the list of releases, newest first, written for whoever is holding the
+phone. It lives in code rather than a file so it ships with the build and the running container
+can only ever describe itself.
+
+After a deploy, a phone that has not seen the current version gets a line under the header —
+*Updated to 1.6 · What's new* — which leads to `/whats-new`: the whole history, and when this
+container actually started, so "when did it update" has an answer. Reading it or dismissing it
+is remembered per device in that browser's own storage, so one parent reading it does not make
+it vanish for the other.
+
+**Add an entry at the top of `Releases` when deploying something worth mentioning.** The version
+string is what decides whether a phone has already seen the notice, so it has to change for the
+notice to appear.
+
 ## Layout
 
 | Path | What's in it |
@@ -203,13 +219,14 @@ Three things deal with that:
 | `Services/EventService.cs` | All reads and writes, plus a `Changed` event that pushes updates to open pages |
 | `Services/Display.cs` | UTC↔local conversion and the shared label/duration formatting |
 | `Services/ChartGrouping.cs` | Rebuilds the flat log into paper-chart rows (feed + its outputs) |
+| `Services/Changelog.cs` | The releases the *What's new* notice and page are built from |
 | `Services/BabyService.cs` | The babies, and which one a device has selected (a claim on the sign-in cookie) |
 | `Services/MediaService.cs` | The photos and clips: the files on the volume and the rows that point at them |
 | `Services/Auth.cs` | The roles, the configured passwords, and the check the pages use before rendering anything that writes |
 | `Services/Credentials.cs` | Which password lets you in: stored and hashed if it has been changed, from the configuration if not |
-| `Components/Pages/` | `Home.razor` (the buttons), `Chart.razor`, `Report.razor`, `ManageBabies.razor`, `Password.razor`, `Login.razor` |
+| `Components/Pages/` | `Home.razor` (the buttons), `Chart.razor`, `Report.razor`, `ManageBabies.razor`, `Password.razor`, `WhatsNew.razor`, `Login.razor` |
 | `Components/` | `EventList`, `BottleDialog`, `EditEventDialog`, `TimeField`, `RangePicker`, `OutputMarks`, `CircuitHeartbeat`, `Icon` |
-| `wwwroot/` | `app.css`, `circuit-watchdog.js`, `media-upload.js`, `manifest.webmanifest`, `service-worker.js`, `offline.html`, icons |
+| `wwwroot/` | `app.css`, `circuit-watchdog.js`, `media-upload.js`, `whats-new.js`, `manifest.webmanifest`, `service-worker.js`, `offline.html`, icons |
 
 Times are stored in UTC and rendered in the server's local timezone (`TZ`). Everything that has to
 survive a rebuild is under `/data`: the database, the attachments in `media/`, and the keys that

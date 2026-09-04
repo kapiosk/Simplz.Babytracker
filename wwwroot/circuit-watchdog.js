@@ -30,6 +30,7 @@
     const SilentForMs = 17000;   // three beats missed before anything is assumed
     const CheckEveryMs = 3000;
     const SettleMs = 1500;       // give Blazor's own reconnect a moment to get there first
+    const HealItselfMs = 2000;   // ...and the same before reloading out from under it
 
     // While Blazor knows it is disconnected it shows its own dialog and runs its own retry
     // loop; two of us calling reconnect() at once helps nobody. We only step in for the case
@@ -99,6 +100,8 @@
 
     // Survives the reload, which is the point: without it a fault that reappears on the fresh
     // page would send it round again immediately.
+    const errorUi = document.getElementById('blazor-error-ui');
+
     const RecoveredKey = 'babytracker.recoveredAt';
     const RecoveredWithinMs = 30000;
 
@@ -129,8 +132,20 @@
 
         recovering = true;
         setBanner('Something went wrong — reloading…');
-        markRecovered();
-        location.reload();
+
+        // Blazor sometimes clears this itself once its own reconnect gets through. Reloading
+        // on top of that would throw away a page that was about to be fine, so wait long
+        // enough to find out.
+        setTimeout(() => {
+            if (getComputedStyle(errorUi).display === 'none') {
+                recovering = false;
+                setBanner(null);
+                return;
+            }
+
+            markRecovered();
+            location.reload();
+        }, HealItselfMs);
     }
 
     async function recover() {
@@ -260,6 +275,20 @@
         }
     }
 
+    // The bar has gone up with nothing else reported alongside it, which leaves no clue as to
+    // what raised it. Blazor says what went wrong on the console first, so listen there.
+    const realConsoleError = console.error;
+    console.error = function (...args) {
+        try {
+            report('console.error', args
+                .map(a => (a && a.stack) ? a.stack : (a && a.message) ? a.message : String(a))
+                .join(' | '));
+        } catch {
+            // Reporting must never be the reason a page breaks.
+        }
+        return realConsoleError.apply(console, args);
+    };
+
     window.addEventListener('error', event => {
         report('window.onerror', (event.message || '') + ' @ ' + (event.filename || '') + ':' + (event.lineno || 0));
     });
@@ -271,7 +300,6 @@
 
     // Blazor shows this bar for an unhandled error, whichever side it came from, so it is the
     // one signal that always coincides with what gets reported as "the app crashed".
-    const errorUi = document.getElementById('blazor-error-ui');
     if (errorUi) {
         new MutationObserver(() => {
             if (getComputedStyle(errorUi).display === 'none') {
