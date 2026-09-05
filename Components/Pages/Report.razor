@@ -20,6 +20,11 @@
         <div class="v">@breastCount</div>
         <div class="x">@(breastTotal > TimeSpan.Zero ? $"{Display.Duration(breastTotal)} total · {Display.Duration(breastAvg)} avg" : "no completed sessions")</div>
     </div>
+    <div class="stat sleep">
+        <div class="k"><Icon Name="sleep" /> Sleep</div>
+        <div class="v">@Display.Duration(sleepTotal)</div>
+        <div class="x">@(sleepCount > 0 ? $"{sleepCount} {(sleepCount == 1 ? "sleep" : "sleeps")} · longest {Display.Duration(sleepLongest)}" : "nothing recorded")</div>
+    </div>
     <div class="stat bottle">
         <div class="k"><Icon Name="bottle" /> Bottles</div>
         <div class="v">@bottleCount</div>
@@ -119,6 +124,9 @@
     private int breastCount;
     private TimeSpan breastTotal;
     private TimeSpan breastAvg;
+    private int sleepCount;
+    private TimeSpan sleepTotal;
+    private TimeSpan sleepLongest;
     private int bottleCount;
     private int bottleMl;
     private int formulaCount;
@@ -153,6 +161,14 @@
         var completed = breastFeeds.Where(e => e.Duration is not null).ToList();
         breastTotal = completed.Aggregate(TimeSpan.Zero, (sum, e) => sum + e.Duration!.Value);
         breastAvg = completed.Count > 0 ? breastTotal / completed.Count : TimeSpan.Zero;
+
+        // Only finished sleeps count: one still running has no length yet.
+        var sleeps = events
+            .Where(e => e.Kind == EventKind.Sleep && e.Duration is not null)
+            .ToList();
+        sleepCount = sleeps.Count;
+        sleepTotal = sleeps.Aggregate(TimeSpan.Zero, (sum, e) => sum + e.Duration!.Value);
+        sleepLongest = sleeps.Count > 0 ? sleeps.Max(e => e.Duration!.Value) : TimeSpan.Zero;
 
         var bottles = events.Where(e => e.Kind == EventKind.BottleFeed).ToList();
         bottleCount = bottles.Count;

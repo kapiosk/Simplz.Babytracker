@@ -334,6 +334,18 @@
     // every 30 seconds. A phone on a nightstand should keep trying, and get back quickly
     // when the wifi returns.
     Blazor.start({
+        // Enhanced navigation off. It swaps the page without a fresh load, and to do that it
+        // tells the server which interactive root components to add and remove. On a connection
+        // that keeps dropping — 26 failed negotiations and 6 abnormal socket closes in the day
+        // and a half this was measured over — that list reaches a circuit that disagrees about
+        // what it holds, the server rejects it with "The list of component operations is not
+        // valid", and the circuit dies. That is what has been putting the error bar up.
+        //
+        // The cost is a full page load when moving between Track, Chart and Report, which on
+        // six small pages over a local network is not much to give up for it.
+        ssr: {
+            disableDomPreservation: true
+        },
         circuit: {
             reconnectionOptions: {
                 maxRetries: 1000,

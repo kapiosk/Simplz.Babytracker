@@ -35,6 +35,7 @@ public static class Display
         EventKind.Poop => "Poop",
         EventKind.Urine => "Urine",
         EventKind.Vomit => "Vomit",
+        EventKind.Sleep => "Sleep",
         _ => e.Kind.ToString()
     };
 
@@ -45,6 +46,7 @@ public static class Display
         EventKind.Poop => "Poop",
         EventKind.Urine => "Urine",
         EventKind.Vomit => "Vomit",
+        EventKind.Sleep => "Sleep",
         _ => kind.ToString()
     };
 
@@ -56,6 +58,7 @@ public static class Display
         EventKind.Poop => "poop",
         EventKind.Urine => "urine",
         EventKind.Vomit => "vomit",
+        EventKind.Sleep => "sleep",
         _ => "other"
     };
 

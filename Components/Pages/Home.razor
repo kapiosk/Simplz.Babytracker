@@ -13,21 +13,39 @@
 @if (canEdit)
 {
     <div class="actions">
-        @if (running is not null)
+        @if (runningFeed is not null)
         {
-            <button class="action breast running wide" @onclick="StopBreastFeed">
+            <button class="action breast running wide" @onclick="() => Stop(runningFeed)">
                 <span class="ico"><Icon Name="breast" /></span>
-                <span class="timer">@Display.Clock(DateTime.UtcNow - running.StartUtc)</span>
+                <span class="timer">@Display.Clock(DateTime.UtcNow - runningFeed.StartUtc)</span>
                 <span>Tap to stop</span>
-                <span class="hint">started @Display.ToLocal(running.StartUtc).ToString("HH:mm")</span>
+                <span class="hint">started @Display.ToLocal(runningFeed.StartUtc).ToString("HH:mm")</span>
             </button>
         }
         else
         {
-            <button class="action breast wide" @onclick="StartBreastFeed">
+            <button class="action breast wide" @onclick="() => Start(EventKind.BreastFeed)">
                 <span class="ico"><Icon Name="breast" /></span>
                 <span>Start breast feed</span>
                 <span class="hint">@LastHint(EventKind.BreastFeed)</span>
+            </button>
+        }
+
+        @if (runningSleep is not null)
+        {
+            <button class="action sleep running wide" @onclick="() => Stop(runningSleep)">
+                <span class="ico"><Icon Name="sleep" /></span>
+                <span class="timer">@Display.Clock(DateTime.UtcNow - runningSleep.StartUtc)</span>
+                <span>Tap to wake</span>
+                <span class="hint">asleep since @Display.ToLocal(runningSleep.StartUtc).ToString("HH:mm")</span>
+            </button>
+        }
+        else
+        {
+            <button class="action sleep wide" @onclick="() => Start(EventKind.Sleep)">
+                <span class="ico"><Icon Name="sleep" /></span>
+                <span>Start sleep</span>
+                <span class="hint">@LastHint(EventKind.Sleep)</span>
             </button>
         }
 
@@ -56,10 +74,10 @@
         </button>
     </div>
 
-    @if (running is not null)
+    @foreach (var session in Running)
     {
-        <button class="btn block subtle" @onclick="() => editing = running">
-            Started at @Display.ToLocal(running.StartUtc).ToString("HH:mm") — adjust
+        <button class="btn block subtle" @key="session.Id" @onclick="() => editing = session">
+            @Display.Label(session) started at @Display.ToLocal(session.StartUtc).ToString("HH:mm") — adjust
         </button>
     }
 }
@@ -70,12 +88,12 @@ else
         <a href="chart">chart</a> and <a href="report">report</a>, but not changed.
     </div>
 
-    @if (running is not null)
+    @foreach (var session in Running)
     {
-        <div class="card running-note">
-            <span class="ico breast"><Icon Name="breast" /></span>
-            Breast feed running since @Display.ToLocal(running.StartUtc).ToString("HH:mm")
-            · @Display.Clock(DateTime.UtcNow - running.StartUtc)
+        <div class="card running-note" @key="session.Id">
+            <span class="ico @Display.Css(session.Kind)"><Icon Name="@Icon.For(session.Kind)" /></span>
+            @Display.Label(session) running since @Display.ToLocal(session.StartUtc).ToString("HH:mm")
+            · @Display.Clock(DateTime.UtcNow - session.StartUtc)
         </div>
     }
 }
@@ -116,7 +134,13 @@ else
     private bool canEdit;
     private Baby? baby;
     private List<BabyEvent> recent = [];
-    private BabyEvent? running;
+
+    // A feed and a sleep run independently of each other, so each is tracked on its own.
+    private BabyEvent? runningFeed;
+    private BabyEvent? runningSleep;
+
+    private IEnumerable<BabyEvent> Running =>
+        new[] { runningFeed, runningSleep }.Where(e => e is not null)!;
     private BabyEvent? editing;
     private bool showBottle;
 
@@ -152,7 +176,7 @@ else
         {
             while (!ct.IsCancellationRequested)
             {
-                var interval = running is not null || toastUntil > DateTime.UtcNow
+                var interval = runningFeed is not null || runningSleep is not null || toastUntil > DateTime.UtcNow
                     ? TimeSpan.FromSeconds(1)
                     : TimeSpan.FromSeconds(30);
 
@@ -198,7 +222,13 @@ else
         }
 
         recent = await Events.GetRecentAsync(baby.Id, 12);
-        running = recent.FirstOrDefault(e => e.IsRunning) ?? await Events.GetRunningBreastFeedAsync(baby.Id);
+
+        // A session that started before the last twelve entries is still running, so fall back
+        // to asking for it rather than deciding it does not exist.
+        runningFeed = recent.FirstOrDefault(e => e.IsRunning && e.Kind == EventKind.BreastFeed)
+            ?? await Events.GetRunningAsync(baby.Id, EventKind.BreastFeed);
+        runningSleep = recent.FirstOrDefault(e => e.IsRunning && e.Kind == EventKind.Sleep)
+            ?? await Events.GetRunningAsync(baby.Id, EventKind.Sleep);
     }
 
     private string LastHint(EventKind kind)
@@ -207,27 +237,27 @@ else
         return last is null ? "no entry yet" : $"last {Display.Ago(last.EndUtc ?? last.StartUtc)}";
     }
 
-    private async Task StartBreastFeed()
+    private async Task Start(EventKind kind)
     {
         if (!canEdit || baby is null)
         {
             return;
         }
 
-        await Events.StartBreastFeedAsync(baby.Id);
-        Toast("Breast feed started");
+        await Events.StartAsync(baby.Id, kind);
+        Toast(kind == EventKind.Sleep ? "Sleep started" : "Breast feed started");
     }
 
-    private async Task StopBreastFeed()
+    private async Task Stop(BabyEvent? session)
     {
-        if (running is null || !canEdit)
+        if (session is null || !canEdit)
         {
             return;
         }
 
-        var elapsed = DateTime.UtcNow - running.StartUtc;
-        await Events.StopBreastFeedAsync(running.Id);
-        Toast($"Breast feed · {Display.Duration(elapsed)}");
+        var elapsed = DateTime.UtcNow - session.StartUtc;
+        await Events.StopAsync(session.Id);
+        Toast($"{Display.Label(session)} · {Display.Duration(elapsed)}");
     }
 
     private async Task Log(EventKind kind)
