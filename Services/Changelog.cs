@@ -20,7 +20,7 @@ public static class Changelog
         new("1.7", new DateOnly(2026, 9, 5),
         [
             "Sleep can be tracked: tap to start, tap again when they wake, with a running timer like a breast feed.",
-            "A feed and a sleep can run at the same time — they have nothing to do with each other.",
+            "Starting a sleep ends a running feed, and starting a feed ends a running sleep — a baby cannot be doing both.",
             "The report shows total sleep, how many, and the longest stretch.",
             "Fewer of the error bars reported on the tracker: moving between pages no longer reloads them in a way that upset the connection."
         ]),
