@@ -77,6 +77,16 @@ body {
 }
 
 h1, h2, h3 { margin: 0 0 .5rem; line-height: 1.2; }
+
+/* On navigating, Blazor moves focus to the page heading so a screen reader announces which page
+   it has landed on. To do that it has to make the heading focusable, and Safari then draws a ring
+   round it — which is what the title looks selected on arrival. Keep the focus, since losing it
+   costs a screen reader its bearings, and drop the ring for anyone who did not arrive by keyboard.
+   :focus-visible still gives it back to whoever is tabbing. */
+[tabindex="-1"]:focus:not(:focus-visible),
+h1:focus:not(:focus-visible) {
+    outline: none;
+}
 h1 { font-size: 1.5rem; }
 h2 { font-size: 1.1rem; }
 
@@ -840,6 +850,8 @@ body { padding-top: var(--circuit-banner-h, 0px); }
 
 #whats-new .msg { font-weight: 600; }
 #whats-new a { margin-left: auto; font-weight: 600; }
+
+#whats-new button .icon { width: .9rem; height: .9rem; }
 
 #whats-new button {
     appearance: none;

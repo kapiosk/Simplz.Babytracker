@@ -65,7 +65,9 @@
         <div id="whats-new" data-version="@Changelog.Current.Version" hidden>
             <span class="msg">Updated to @Changelog.Current.Version</span>
             <a href="whats-new">What's new</a>
-            <button type="button" data-dismiss title="Dismiss" aria-label="Dismiss">🗙</button>
+            <button type="button" data-dismiss title="Dismiss" aria-label="Dismiss">
+                <Icon Name="close" />
+            </button>
         </div>
     </Authorized>
 </AuthorizeView>
@@ -92,7 +94,7 @@
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.
     <a href="." class="reload">Reload</a>
-    <span class="dismiss">🗙</span>
+    <span class="dismiss"><Icon Name="close" /></span>
 </div>
 
 @code {

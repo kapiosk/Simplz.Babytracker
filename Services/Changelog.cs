@@ -21,7 +21,8 @@ public static class Changelog
         [
             "Light and dark, or whichever the phone is set to. On the Babies screen, under Appearance.",
             "The choice is per device, so one phone can be dark at 3am while the other stays light.",
-            "On the chart, the entries inside a day now read newest first, the same way round as the days."
+            "On the chart, the entries inside a day now read newest first, the same way round as the days.",
+            "The page title no longer arrives looking selected, and the dismiss cross now draws on phones whose fonts do not have that character."
         ]),
 
         new("1.7", new DateOnly(2026, 9, 5),
