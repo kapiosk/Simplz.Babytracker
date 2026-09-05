@@ -17,6 +17,13 @@ public static class Changelog
 
     public static readonly IReadOnlyList<Release> Releases =
     [
+        new("1.8", new DateOnly(2026, 9, 5),
+        [
+            "Light and dark, or whichever the phone is set to. On the Babies screen, under Appearance.",
+            "The choice is per device, so one phone can be dark at 3am while the other stays light.",
+            "On the chart, the entries inside a day now read newest first, the same way round as the days."
+        ]),
+
         new("1.7", new DateOnly(2026, 9, 5),
         [
             "Sleep can be tracked: tap to start, tap again when they wake, with a running timer like a breast feed.",

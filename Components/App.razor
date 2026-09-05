@@ -12,8 +12,9 @@
 
     <title>Baby Tracker</title>
     <link rel="manifest" href="manifest.webmanifest" />
-    <meta name="theme-color" content="#6b4ee6" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#14121b" media="(prefers-color-scheme: dark)" />
+    @* One tag, kept up to date by theme.js: a theme chosen in the app has to beat the media
+       query a pair of tags would otherwise answer to. *@
+    <meta name="theme-color" content="#6b4ee6" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -21,6 +22,9 @@
     <link rel="icon" type="image/png" href="icons/icon-192.png" />
     <link rel="apple-touch-icon" href="icons/icon-192.png" />
     <HeadOutlet />
+
+    @* In the head and not deferred, so the theme is on the page before anything is painted. *@
+    <script src="@Assets["theme.js"]"></script>
 </head>
 
 <body>

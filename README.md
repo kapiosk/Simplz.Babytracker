@@ -52,6 +52,21 @@ which feed. With the parent password every cell and every `+` is a button that o
 
 Both pages are live: log something on one phone and any other open phone updates itself.
 
+## Light and dark
+
+**Babies → Appearance** offers light, dark, or following whatever the phone is set to, which is
+the default. The choice is kept in that browser's own storage, so it is per device: one phone can
+be dark at 3am while the other stays light, and the read-only password gets the same say.
+
+`wwwroot/theme.js` is loaded from `<head>` and not deferred, so the theme is on the page before
+anything is painted — deferring it means every load starts in the wrong colours and corrects
+itself a moment later, which in a dark room is worse than either theme. It also keeps the
+`theme-color` tag up to date, which is the colour behind the clock and the battery on a phone.
+
+The dark palette is written out twice in `app.css`: once under `prefers-color-scheme` for
+following the phone, and once under `[data-theme="dark"]` for having been asked for. CSS has no
+way to say "either of these" in one rule.
+
 ## Photos and clips
 
 The pencil on any entry opens the editor, and at the bottom of it is somewhere to attach photos
@@ -228,7 +243,7 @@ notice to appear.
 | `Services/Credentials.cs` | Which password lets you in: stored and hashed if it has been changed, from the configuration if not |
 | `Components/Pages/` | `Home.razor` (the buttons), `Chart.razor`, `Report.razor`, `ManageBabies.razor`, `Password.razor`, `WhatsNew.razor`, `Login.razor` |
 | `Components/` | `EventList`, `BottleDialog`, `EditEventDialog`, `TimeField`, `RangePicker`, `OutputMarks`, `CircuitHeartbeat`, `Icon` |
-| `wwwroot/` | `app.css`, `circuit-watchdog.js`, `media-upload.js`, `whats-new.js`, `manifest.webmanifest`, `service-worker.js`, `offline.html`, icons |
+| `wwwroot/` | `app.css`, `theme.js`, `circuit-watchdog.js`, `media-upload.js`, `whats-new.js`, `manifest.webmanifest`, `service-worker.js`, `offline.html`, icons |
 
 Times are stored in UTC and rendered in the server's local timezone (`TZ`). Everything that has to
 survive a rebuild is under `/data`: the database, the attachments in `media/`, and the keys that

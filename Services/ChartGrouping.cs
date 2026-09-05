@@ -85,8 +85,10 @@ public static class ChartGrouping
         return rows
             .GroupBy(r => Display.ToLocal(r.StartUtc).Date)
             .OrderByDescending(g => g.Key)
-            // Days newest first, but the rows inside a day read top-to-bottom like the paper chart.
-            .Select(g => new ChartDay(g.Key, g.OrderBy(r => r.StartUtc).ToList()))
+            // Newest first inside a day as well as between them. It reads the other way round
+            // from the paper chart it is modelled on, but a list that runs backwards halfway
+            // down reads worse than one that does not.
+            .Select(g => new ChartDay(g.Key, g.OrderByDescending(r => r.StartUtc).ToList()))
             .ToList();
     }
 }
