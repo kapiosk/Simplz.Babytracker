@@ -79,12 +79,19 @@ body {
 h1, h2, h3 { margin: 0 0 .5rem; line-height: 1.2; }
 
 /* On navigating, Blazor moves focus to the page heading so a screen reader announces which page
-   it has landed on. To do that it has to make the heading focusable, and Safari then draws a ring
-   round it — which is what the title looks selected on arrival. Keep the focus, since losing it
-   costs a screen reader its bearings, and drop the ring for anyone who did not arrive by keyboard.
-   :focus-visible still gives it back to whoever is tabbing. */
-[tabindex="-1"]:focus:not(:focus-visible),
-h1:focus:not(:focus-visible) {
+   it has landed on. To do that it gives the heading tabindex="-1" and focuses it, and Safari then
+   draws a ring round it, which is the box round the title on arrival.
+
+   No :focus-visible here, deliberately. That was the first attempt and it did not hold: Safari
+   decides what counts as focus-visible differently from Chrome, so the ring still appeared on a
+   phone while looking fixed on a desktop. This does not depend on the browser agreeing with
+   anything — tabindex="-1" is focusable but *not tabbable*, so no keyboard user can ever reach
+   the heading by tabbing, and the ring is telling nobody anything. The focus itself, which is the
+   part a screen reader uses, is untouched.
+
+   Nothing else in the app sets tabindex, so this can only ever match that heading. */
+[tabindex="-1"]:focus,
+h1:focus {
     outline: none;
 }
 h1 { font-size: 1.5rem; }
