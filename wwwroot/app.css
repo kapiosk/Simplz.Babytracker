@@ -22,8 +22,31 @@
     --shadow: 0 1px 2px rgba(20, 16, 40, .08), 0 6px 18px rgba(20, 16, 40, .06);
 }
 
+/* The dark palette is written out twice on purpose: once for following whatever the phone is
+   set to, and once for having been asked for here. CSS has no way to say "either of these" in
+   a single rule, and the alternative — a layer of variables pointing at other variables — buys
+   nine saved lines for a palette nobody can read at a glance any more. */
+
+:root[data-theme="light"] {
+    color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+
+    --bg: #14121b;
+    --surface: #1e1b28;
+    --surface-2: #272235;
+    --text: #f2f0f7;
+    --text-dim: #a29cb8;
+    --border: #332d44;
+    --accent: #9b7bff;
+    --accent-text: #16121f;
+    --danger: #ff6b7a;
+}
+
 @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not([data-theme="light"]) {
         --bg: #14121b;
         --surface: #1e1b28;
         --surface-2: #272235;
@@ -270,7 +293,14 @@ table.grid th .icon { margin-left: auto; }
     cursor: pointer;
 }
 
-.chip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.chip.on,
+:root[data-theme-choice="light"]  [data-theme-set="light"],
+:root[data-theme-choice="dark"]   [data-theme-set="dark"],
+:root[data-theme-choice="system"] [data-theme-set="system"] {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-text);
+}
 
 .stats {
     display: grid;

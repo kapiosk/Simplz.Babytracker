@@ -38,6 +38,19 @@
     </div>
 }
 
+@* Outside the parent-only part: how the screen looks is nobody's business but the person
+   holding it, and the read-only password gets a say in that too. *@
+<h2 style="margin-top:1.5rem">Appearance</h2>
+
+<div class="card">
+    <div class="range">
+        <button type="button" class="chip" data-theme-set="light">Light</button>
+        <button type="button" class="chip" data-theme-set="dark">Dark</button>
+        <button type="button" class="chip" data-theme-set="system">System</button>
+    </div>
+    <div class="hint-line">Remembered on this device only — the other phone keeps its own.</div>
+</div>
+
 @if (canEdit)
 {
     <p class="login-note"><NavLink href="password">Change the passwords</NavLink> · <NavLink href="whats-new">What's new</NavLink></p>
