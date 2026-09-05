@@ -44,9 +44,12 @@ public class BabyEvent
 
     /// <summary>
     /// The kinds that are a stretch of time rather than a moment, and so are started and stopped.
-    /// A feed and a sleep can both be running at once; they have nothing to do with each other.
+    /// Only one of them runs at a time: a baby cannot be feeding and asleep at once, so starting
+    /// either ends the other. An array rather than a pattern so a query can use it too.
     /// </summary>
-    public static bool Lasts(EventKind kind) => kind is EventKind.BreastFeed or EventKind.Sleep;
+    public static readonly EventKind[] LastingKinds = [EventKind.BreastFeed, EventKind.Sleep];
+
+    public static bool Lasts(EventKind kind) => LastingKinds.Contains(kind);
 
     public bool IsRunning => Lasts(Kind) && EndUtc is null;
 

@@ -244,8 +244,13 @@ else
             return;
         }
 
+        // Read before starting: by the time it returns, the other one has already been ended.
+        var ended = kind == EventKind.Sleep ? runningFeed : runningSleep;
+
         await Events.StartAsync(baby.Id, kind);
-        Toast(kind == EventKind.Sleep ? "Sleep started" : "Breast feed started");
+
+        var started = kind == EventKind.Sleep ? "Sleep started" : "Breast feed started";
+        Toast(ended is null ? started : $"{started} · {Display.Label(ended).ToLowerInvariant()} ended");
     }
 
     private async Task Stop(BabyEvent? session)

@@ -13,8 +13,8 @@ Data lives in a single SQLite file, and the whole thing ships as one Docker cont
 - **Breast feed** — tap once to start, the button turns into a running timer, tap again to stop.
   A session survives a page reload, a phone lock, or logging from a different device.
 - **Bottle** — opens a sheet: breast milk or formula, amount in ml (presets or free text), optional note.
-- **Sleep** — the same: tap to start, tap again when they wake. A feed and a sleep run
-  independently, so both can be going at once.
+- **Sleep** — the same: tap to start, tap again when they wake. Starting one ends the other, at
+  the moment the new one begins: a baby cannot be feeding and asleep at the same time.
 - **Poop**, **Urine**, **Vomit** — one tap each, logged at the current time.
 
 Nothing has to be logged as it happens. Under the buttons is the recent log; the pencil on any row opens

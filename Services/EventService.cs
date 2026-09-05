@@ -51,7 +51,13 @@ public class EventService(IDbContextFactory<AppDbContext> factory, MediaService 
             .FirstOrDefaultAsync(ct);
     }
 
-    /// <summary>Starts a session, or returns the one already running rather than opening a second.</summary>
+    /// <summary>
+    /// Starts a session, or returns the one already running rather than opening a second.
+    ///
+    /// A baby cannot be feeding and asleep at the same time, so starting either ends the other,
+    /// at the moment this one begins rather than at some rounded-off time. Enforced here rather
+    /// than on the page, so it holds however the session was started.
+    /// </summary>
     public async Task<BabyEvent> StartAsync(int babyId, EventKind kind, CancellationToken ct = default)
     {
         var running = await GetRunningAsync(babyId, kind, ct);
@@ -60,12 +66,39 @@ public class EventService(IDbContextFactory<AppDbContext> factory, MediaService 
             return running;
         }
 
-        var ev = new BabyEvent { BabyId = babyId, Kind = kind, StartUtc = DateTime.UtcNow };
+        var now = DateTime.UtcNow;
         await using var db = await factory.CreateDbContextAsync(ct);
+
+        var others = await db.Events
+            .Where(e => e.BabyId == babyId
+                        && e.EndUtc == null
+                        && e.Kind != kind
+                        && BabyEvent.LastingKinds.Contains(e.Kind))
+            .ToListAsync(ct);
+
+        foreach (var other in others)
+        {
+            other.EndUtc = now;
+        }
+
+        var ev = new BabyEvent { BabyId = babyId, Kind = kind, StartUtc = now };
         db.Events.Add(ev);
         await db.SaveChangesAsync(ct);
         NotifyChanged(babyId);
         return ev;
+    }
+
+    /// <summary>What starting this kind would end, so the page can say so before it happens.</summary>
+    public async Task<BabyEvent?> WouldEndAsync(int babyId, EventKind starting, CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+        return await db.Events
+            .Where(e => e.BabyId == babyId
+                        && e.EndUtc == null
+                        && e.Kind != starting
+                        && BabyEvent.LastingKinds.Contains(e.Kind))
+            .OrderByDescending(e => e.StartUtc)
+            .FirstOrDefaultAsync(ct);
     }
 
     public async Task StopAsync(int id, CancellationToken ct = default)
