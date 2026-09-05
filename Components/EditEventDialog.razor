@@ -15,13 +15,15 @@
             </div>
         </div>
 
-        <TimeField Id="start" Label="@(kind == EventKind.BreastFeed ? "Started" : "Time")"
+        <TimeField Id="start" Label="@(BabyEvent.Lasts(kind) ? "Started" : "Time")"
                    Value="@startText" ValueChanged="v => startText = v" />
 
-        @if (kind == EventKind.BreastFeed)
+        @if (BabyEvent.Lasts(kind))
         {
-            <TimeField Id="end" Label="Stopped" Value="@endText" ValueChanged="v => endText = v"
-                       ClearLabel="Still feeding" Hint="@DurationHint" />
+            <TimeField Id="end" Label="@(kind == EventKind.Sleep ? "Woke" : "Stopped")"
+                       Value="@endText" ValueChanged="v => endText = v"
+                       ClearLabel="@(kind == EventKind.Sleep ? "Still asleep" : "Still feeding")"
+                       Hint="@DurationHint" />
         }
 
         @if (kind == EventKind.BottleFeed)
@@ -166,12 +168,14 @@
 
             if (end is null)
             {
-                return "Still feeding — no stop time yet.";
+                return kind == EventKind.Sleep
+                    ? "Still asleep — no waking time yet."
+                    : "Still feeding — no stop time yet.";
             }
 
             var span = end.Value - start.Value;
             return span < TimeSpan.Zero
-                ? "The stop time is before the start time."
+                ? "The end is before the start."
                 : $"Duration: {Display.Duration(span)}";
         }
     }
@@ -264,7 +268,7 @@
             Id = Event.Id,
             Kind = kind,
             StartUtc = Display.ToUtc(startLocal),
-            EndUtc = kind == EventKind.BreastFeed && endLocal is not null ? Display.ToUtc(endLocal.Value) : null,
+            EndUtc = BabyEvent.Lasts(kind) && endLocal is not null ? Display.ToUtc(endLocal.Value) : null,
             Milk = kind == EventKind.BottleFeed ? milk : null,
             AmountMl = kind == EventKind.BottleFeed ? amount : null,
             Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim()

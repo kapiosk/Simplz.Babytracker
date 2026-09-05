@@ -17,6 +17,14 @@ public static class Changelog
 
     public static readonly IReadOnlyList<Release> Releases =
     [
+        new("1.7", new DateOnly(2026, 9, 5),
+        [
+            "Sleep can be tracked: tap to start, tap again when they wake, with a running timer like a breast feed.",
+            "A feed and a sleep can run at the same time — they have nothing to do with each other.",
+            "The report shows total sleep, how many, and the longest stretch.",
+            "Fewer of the error bars reported on the tracker: moving between pages no longer reloads them in a way that upset the connection."
+        ]),
+
         new("1.6", new DateOnly(2026, 9, 4),
         [
             "This notice. The app now says when it has been updated, and this page says what changed.",

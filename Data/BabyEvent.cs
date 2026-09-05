@@ -8,7 +8,8 @@ public enum EventKind
     BottleFeed = 1,
     Poop = 2,
     Urine = 3,
-    Vomit = 4
+    Vomit = 4,
+    Sleep = 5
 }
 
 public enum MilkKind
@@ -26,10 +27,10 @@ public class BabyEvent
 
     public EventKind Kind { get; set; }
 
-    /// <summary>When the event happened (UTC). For breast feeding this is the moment feeding started.</summary>
+    /// <summary>When the event happened (UTC). For the kinds that last, the moment it started.</summary>
     public DateTime StartUtc { get; set; }
 
-    /// <summary>Only used by breast feeding: when feeding stopped. Null while a session is still running.</summary>
+    /// <summary>Only for the kinds that last: when it stopped. Null while still running.</summary>
     public DateTime? EndUtc { get; set; }
 
     /// <summary>Only used by bottle feeding.</summary>
@@ -41,7 +42,13 @@ public class BabyEvent
     [MaxLength(500)]
     public string? Notes { get; set; }
 
-    public bool IsRunning => Kind == EventKind.BreastFeed && EndUtc is null;
+    /// <summary>
+    /// The kinds that are a stretch of time rather than a moment, and so are started and stopped.
+    /// A feed and a sleep can both be running at once; they have nothing to do with each other.
+    /// </summary>
+    public static bool Lasts(EventKind kind) => kind is EventKind.BreastFeed or EventKind.Sleep;
+
+    public bool IsRunning => Lasts(Kind) && EndUtc is null;
 
     public TimeSpan? Duration => EndUtc is null ? null : EndUtc.Value - StartUtc;
 }

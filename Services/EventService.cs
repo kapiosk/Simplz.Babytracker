@@ -38,24 +38,29 @@ public class EventService(IDbContextFactory<AppDbContext> factory, MediaService 
         }
     }
 
-    public async Task<BabyEvent?> GetRunningBreastFeedAsync(int babyId, CancellationToken ct = default)
+    /// <summary>
+    /// The session of this kind that has been started and not stopped, if there is one. A feed
+    /// and a sleep run independently, so each is asked for separately.
+    /// </summary>
+    public async Task<BabyEvent?> GetRunningAsync(int babyId, EventKind kind, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         return await db.Events
-            .Where(e => e.BabyId == babyId && e.Kind == EventKind.BreastFeed && e.EndUtc == null)
+            .Where(e => e.BabyId == babyId && e.Kind == kind && e.EndUtc == null)
             .OrderByDescending(e => e.StartUtc)
             .FirstOrDefaultAsync(ct);
     }
 
-    public async Task<BabyEvent> StartBreastFeedAsync(int babyId, CancellationToken ct = default)
+    /// <summary>Starts a session, or returns the one already running rather than opening a second.</summary>
+    public async Task<BabyEvent> StartAsync(int babyId, EventKind kind, CancellationToken ct = default)
     {
-        var running = await GetRunningBreastFeedAsync(babyId, ct);
+        var running = await GetRunningAsync(babyId, kind, ct);
         if (running is not null)
         {
             return running;
         }
 
-        var ev = new BabyEvent { BabyId = babyId, Kind = EventKind.BreastFeed, StartUtc = DateTime.UtcNow };
+        var ev = new BabyEvent { BabyId = babyId, Kind = kind, StartUtc = DateTime.UtcNow };
         await using var db = await factory.CreateDbContextAsync(ct);
         db.Events.Add(ev);
         await db.SaveChangesAsync(ct);
@@ -63,7 +68,7 @@ public class EventService(IDbContextFactory<AppDbContext> factory, MediaService 
         return ev;
     }
 
-    public async Task StopBreastFeedAsync(int id, CancellationToken ct = default)
+    public async Task StopAsync(int id, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         var ev = await db.Events.FirstOrDefaultAsync(e => e.Id == id, ct);

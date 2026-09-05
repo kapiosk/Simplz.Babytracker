@@ -16,6 +16,7 @@
     --poop: #9a6a3c;
     --urine: #d9a521;
     --vomit: #58a55c;
+    --sleep: #5b6bbf;
 
     --radius: 18px;
     --shadow: 0 1px 2px rgba(20, 16, 40, .08), 0 6px 18px rgba(20, 16, 40, .06);
@@ -123,6 +124,7 @@ a { color: var(--accent); }
 .ico.poop,   .action.poop .ico   { color: var(--poop); }
 .ico.urine,  .action.urine .ico  { color: var(--urine); }
 .ico.vomit,  .action.vomit .ico  { color: var(--vomit); }
+.ico.sleep,  .action.sleep .ico  { color: var(--sleep); }
 .action.running .ico { color: #fff; }
 
 .stat .k .icon, table.grid th .icon { display: inline-block; width: 1.15em; height: 1.15em; vertical-align: -.25em; }
@@ -131,6 +133,7 @@ a { color: var(--accent); }
 .stat.poop .k .icon   { color: var(--poop); }
 .stat.urine .k .icon  { color: var(--urine); }
 .stat.vomit .k .icon  { color: var(--vomit); }
+.stat.sleep .k .icon  { color: var(--sleep); }
 table.grid th .icon { margin-left: auto; }
 
 .sheet h2 { display: flex; align-items: center; gap: .5rem; }
@@ -175,12 +178,11 @@ table.grid th .icon { margin-left: auto; }
 .action.poop   { border-left: 8px solid var(--poop); }
 .action.urine  { border-left: 8px solid var(--urine); }
 .action.vomit  { border-left: 8px solid var(--vomit); }
+.action.sleep  { border-left: 8px solid var(--sleep); }
 
-.action.running {
-    background: var(--breast);
-    border-color: var(--breast);
-    color: #fff;
-}
+.action.running { color: #fff; }
+.action.breast.running { background: var(--breast); border-color: var(--breast); }
+.action.sleep.running  { background: var(--sleep);  border-color: var(--sleep); }
 
 .action.running .hint { color: rgba(255, 255, 255, .85); }
 
@@ -291,6 +293,7 @@ table.grid th .icon { margin-left: auto; }
 .stat.poop   { border-left-color: var(--poop); }
 .stat.urine  { border-left-color: var(--urine); }
 .stat.vomit  { border-left-color: var(--vomit); }
+.stat.sleep  { border-left-color: var(--sleep); }
 
 .stat .k { color: var(--text-dim); font-size: .8rem; font-weight: 600; }
 .stat .v { font-size: 1.8rem; font-weight: 800; font-variant-numeric: tabular-nums; }

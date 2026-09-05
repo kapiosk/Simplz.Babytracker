@@ -1,7 +1,7 @@
 # Simplz.Babytracker
 
 A small Blazor Server PWA for tracking a newborn: breast feeding (start/stop with a live timer),
-bottle feeding (formula or breast milk, with amount), poops, urine and vomits — plus a report view.
+bottle feeding (formula or breast milk, with amount), sleep, poops, urine and vomits — plus a report view.
 More than one baby can be tracked, each with its own log.
 It is behind a password: one for the parents, one that gives a doctor the same views read only.
 Data lives in a single SQLite file, and the whole thing ships as one Docker container.
@@ -13,6 +13,8 @@ Data lives in a single SQLite file, and the whole thing ships as one Docker cont
 - **Breast feed** — tap once to start, the button turns into a running timer, tap again to stop.
   A session survives a page reload, a phone lock, or logging from a different device.
 - **Bottle** — opens a sheet: breast milk or formula, amount in ml (presets or free text), optional note.
+- **Sleep** — the same: tap to start, tap again when they wake. A feed and a sleep run
+  independently, so both can be going at once.
 - **Poop**, **Urine**, **Vomit** — one tap each, logged at the current time.
 
 Nothing has to be logged as it happens. Under the buttons is the recent log; the pencil on any row opens
