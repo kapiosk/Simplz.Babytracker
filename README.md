@@ -6,6 +6,9 @@ More than one baby can be tracked, each with its own log.
 It is behind a password: one for the parents, one that gives a doctor the same views read only.
 Data lives in a single SQLite file, and the whole thing ships as one Docker container.
 
+**Using it** is documented separately, in [docs/](docs/Home.md) — the buttons, the chart, photos,
+passwords, and what to do when something looks stuck. This README is about running it.
+
 ## What it does
 
 **Track** (`/`) — five large buttons, sized for one thumb at 3 a.m.
