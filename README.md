@@ -144,6 +144,9 @@ including the one doing the asking, worthless.
 docker compose up -d --build
 ```
 
+(For redeploying an existing instance, use `scripts/deploy.sh` instead — see
+[Deploying a change](#deploying-a-change).)
+
 The app is then on <http://localhost:4549>. Three things to check in `compose.yaml` before the first run:
 
 - `Auth__ParentPassword` / `Auth__DoctorPassword` — change them from the defaults.
@@ -251,6 +254,32 @@ notice to appear.
 Times are stored in UTC and rendered in the server's local timezone (`TZ`). Everything that has to
 survive a rebuild is under `/data`: the database, the attachments in `media/`, and the keys that
 sign the cookie in `keys/`.
+
+## Deploying a change
+
+```bash
+scripts/deploy.sh
+```
+
+It builds and starts the container on the machine named by `DEPLOY_CONTEXT` (a Docker context,
+`raspberrypi5` by default), waits for it to answer, and prints the version now running.
+
+It also refuses to deploy a version that is already out there. That is the point of it: whether a
+phone shows the *what's new* notice is decided entirely by the version string at the top of
+`Services/Changelog.cs`, so writing release notes and forgetting to change that string means
+nobody is ever told — the notes sit in the build, correct and unread, and nothing complains.
+
+So the release flow is: add an entry at the top of `Releases`, then deploy. When a change genuinely
+has nothing worth telling anybody about, say so out loud:
+
+```bash
+scripts/deploy.sh --same-version
+```
+
+The script also carries the compose project name, which has to be `simplzbabytracker`. A different
+one silently creates a new empty volume and the app comes up with none of the data in it.
+
+`/healthz` reports the running version, which is how the check knows.
 
 ## Changing the schema
 

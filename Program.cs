@@ -134,7 +134,16 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
 
-app.MapGet("/healthz", () => Results.Ok("ok"));
+// Also says which version is running, so a deploy can tell whether it is about to ship a
+// version that is already out there — see scripts/deploy.sh. Nothing here is worth hiding:
+// the version is on the What's new page anyway, and the container has to answer this
+// unauthenticated for Docker's own health check to work.
+app.MapGet("/healthz", () => Results.Ok(new
+{
+    status = "ok",
+    version = Changelog.Current.Version,
+    startedUtc = Changelog.RunningSinceUtc
+}));
 
 // Where wwwroot/circuit-watchdog.js sends a failure that happened in the browser. An unhandled
 // error on the server is already logged; one in the page never reaches the Pi at all, which is
