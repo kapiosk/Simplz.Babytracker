@@ -149,6 +149,11 @@ else
 
     private CancellationTokenSource? ticker;
 
+    // Lets the tick be brought forward. Without it the interval below is only reconsidered once
+    // the current sleep has run its course, so starting a feed halfway through an idle thirty
+    // seconds leaves the timer sitting at 00:00 until that sleep happens to end.
+    private readonly SemaphoreSlim wake = new(0, 1);
+
     protected override async Task OnInitializedAsync()
     {
         canEdit = await Access.CanEditAsync(AuthState);
@@ -180,7 +185,12 @@ else
                     ? TimeSpan.FromSeconds(1)
                     : TimeSpan.FromSeconds(30);
 
-                await Task.Delay(interval, ct);
+                // Returns as soon as anything wakes it, rather than always sleeping the whole
+                // interval. The thirty seconds is worth keeping — every tick is a render sent
+                // down a connection that drops often enough as it is — but it has to be a sleep
+                // that can be cut short, or nothing shows until it is over.
+                await wake.WaitAsync(interval, ct);
+
                 await InvokeAsync(StateHasChanged);
             }
         }
@@ -203,6 +213,9 @@ else
         {
             await Reload();
             StateHasChanged();
+
+            // A feed started on the other phone needs this one ticking too.
+            Wake();
         }
         catch (Exception ex)
         {
@@ -338,6 +351,27 @@ else
     {
         toast = message;
         toastUntil = DateTime.UtcNow.AddSeconds(2.5);
+        Wake();
+    }
+
+    /// <summary>
+    /// Brings the next render forward, for when something has just changed and the tick that
+    /// would show it is not due for another half a minute.
+    /// </summary>
+    private void Wake()
+    {
+        try
+        {
+            wake.Release();
+        }
+        catch (SemaphoreFullException)
+        {
+            // Already due to wake.
+        }
+        catch (ObjectDisposedException)
+        {
+            // The page has gone.
+        }
     }
 
     public async ValueTask DisposeAsync()
@@ -350,5 +384,7 @@ else
             ticker.Dispose();
             ticker = null;
         }
+
+        wake.Dispose();
     }
 }
