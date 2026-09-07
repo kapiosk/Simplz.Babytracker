@@ -17,6 +17,11 @@ public static class Changelog
 
     public static readonly IReadOnlyList<Release> Releases =
     [
+        new("1.9", new DateOnly(2026, 9, 7),
+        [
+            "The timer starts counting the moment you tap, instead of sometimes sitting at 00:00 until the message saying it started goes away."
+        ]),
+
         new("1.8", new DateOnly(2026, 9, 5),
         [
             "Light and dark, or whichever the phone is set to. On the Babies screen, under Appearance.",
