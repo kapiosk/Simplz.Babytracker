@@ -14,6 +14,7 @@ first screen is one tap.
 | **Track** | The buttons, and the last dozen entries. Where almost everything is logged. |
 | **Chart** | One row per feed with the nappies and spit-ups recorded against it, like the paper chart from the hospital. |
 | **Report** | Totals over a day, a week, a month or any range you pick, plus every entry in it. |
+| **Trends** | The same measures drawn as bars, so a week or a month has a shape you can see. |
 
 The person icon in the header leads to **Babies**, which is also where passwords, the theme and
 *What's new* are.

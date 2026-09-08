@@ -1,0 +1,177 @@
+@page "/trends"
+@rendermode InteractiveServer
+@implements IDisposable
+@inject EventService Events
+@inject BabyService Babies
+@inject ILogger<Trends> Logger
+
+<PageTitle>Trends · Baby Tracker</PageTitle>
+
+@* Says, from the server, that this page still has a circuit. *@
+<CircuitHeartbeat />
+
+<h1>Trends</h1>
+
+<RangePicker DefaultDays="7" OnChanged="OnRange" />
+
+@* One bar a day over a range, and one bar an hour when the range is a single day — a chart of
+   thirty days has a shape worth seeing, and a chart of one day has exactly one bar and says
+   nothing. Same chart either way; only what a bar covers changes. *@
+<BarChart Label="Sleep" Css="sleep" IconName="sleep" Bucket="@bucket"
+          Total="@Minutes(sleep.Sum(p => p.Value))" Points="sleep" />
+
+<BarChart Label="Breast feeds" Css="breast" IconName="breast" Bucket="@bucket"
+          Total="@($"{(int)feeds.Sum(p => p.Value)}")" Points="feeds" />
+
+<BarChart Label="Bottles" Css="bottle" IconName="bottle" Bucket="@bucket"
+          Total="@($"{(int)bottles.Sum(p => p.Value)} ml")" Points="bottles" />
+
+<BarChart Label="Poops" Css="poop" IconName="poop" Bucket="@bucket"
+          Total="@($"{(int)poops.Sum(p => p.Value)}")" Points="poops" />
+
+<p class="login-note">
+    The tallest bar in each is labelled; the figure beside the title is the whole range.
+    <NavLink href="report">The report</NavLink> has every number and every entry.
+</p>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    private Baby? baby;
+    private DateTime fromDate = DateTime.Now.Date;
+    private DateTime toDate = DateTime.Now.Date;
+
+    private string bucket = "day";
+
+    private List<BarChart.Point> sleep = [];
+    private List<BarChart.Point> feeds = [];
+    private List<BarChart.Point> bottles = [];
+    private List<BarChart.Point> poops = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        baby = await Babies.SelectedAsync(AuthState);
+        Events.Changed += OnEventsChanged;
+    }
+
+    private async Task OnRange(RangePicker.Selection range)
+    {
+        (fromDate, toDate) = (range.From, range.To);
+        await Reload();
+    }
+
+    private async Task Reload()
+    {
+        if (baby is null)
+        {
+            return;
+        }
+
+        var events = await Events.GetRangeAsync(
+            baby.Id, Display.ToUtc(fromDate), Display.ToUtc(toDate.AddDays(1)));
+
+        if (fromDate == toDate)
+        {
+            BuildByHour(events);
+        }
+        else
+        {
+            BuildByDay(events);
+        }
+    }
+
+    private void BuildByDay(List<BabyEvent> events)
+    {
+        bucket = "day";
+
+        var days = new List<DateTime>();
+        for (var day = fromDate; day <= toDate; day = day.AddDays(1))
+        {
+            days.Add(day);
+        }
+
+        // Grouped by the day a thing started, which is how the report counts it too. A sleep that
+        // runs past midnight belongs to the evening it began, and the two pages agreeing matters
+        // more than splitting it across both.
+        var byDay = events.GroupBy(e => Display.ToLocal(e.StartUtc).Date)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        Build(days, day => byDay.TryGetValue(day, out var list) ? list : [], day => Label(day, days.Count));
+    }
+
+    private void BuildByHour(List<BabyEvent> events)
+    {
+        bucket = "hour";
+
+        var hours = Enumerable.Range(0, 24).ToList();
+
+        var byHour = events.GroupBy(e => Display.ToLocal(e.StartUtc).Hour)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        Build(hours, hour => byHour.TryGetValue(hour, out var list) ? list : [], hour => $"{hour:00}:00");
+    }
+
+    private void Build<T>(List<T> buckets, Func<T, List<BabyEvent>> entriesIn, Func<T, string> label)
+    {
+        sleep = [];
+        feeds = [];
+        bottles = [];
+        poops = [];
+
+        foreach (var slot in buckets)
+        {
+            var entries = entriesIn(slot);
+            var name = label(slot);
+
+            // Only finished sleeps have a length; one still running is not a number yet.
+            var minutes = entries
+                .Where(e => e.Kind == EventKind.Sleep && e.Duration is not null)
+                .Sum(e => e.Duration!.Value.TotalMinutes);
+
+            var feedCount = entries.Count(e => e.Kind == EventKind.BreastFeed);
+            var ml = entries.Where(e => e.Kind == EventKind.BottleFeed).Sum(e => e.AmountMl ?? 0);
+            var poopCount = entries.Count(e => e.Kind == EventKind.Poop);
+
+            sleep.Add(new BarChart.Point(name, minutes, Minutes(minutes)));
+            feeds.Add(new BarChart.Point(name, feedCount, feedCount == 1 ? "1 feed" : $"{feedCount} feeds"));
+            bottles.Add(new BarChart.Point(name, ml, $"{ml} ml"));
+            poops.Add(new BarChart.Point(name, poopCount, poopCount == 1 ? "1" : $"{poopCount}"));
+        }
+    }
+
+    /// <summary>
+    /// A sleep of a few seconds is a mis-tap put right, and Display.Duration rounds it to "0m",
+    /// which beside a drawn bar reads as something broken rather than as something brief.
+    /// </summary>
+    private static string Minutes(double minutes) =>
+        minutes <= 0 ? "none"
+            : minutes < 1 ? "under a minute"
+            : Display.Duration(TimeSpan.FromMinutes(minutes));
+
+    /// <summary>Short enough to fit under a bar: a weekday for a week, a date for a month.</summary>
+    private static string Label(DateTime day, int span) =>
+        span <= 7 ? day.ToString("ddd") : day.ToString("d MMM");
+
+    private void OnEventsChanged(int babyId)
+    {
+        if (babyId != baby?.Id)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(async () =>
+        {
+            try
+            {
+                await Reload();
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Refreshing the trends after a change to the event log failed.");
+            }
+        });
+    }
+
+    public void Dispose() => Events.Changed -= OnEventsChanged;
+}

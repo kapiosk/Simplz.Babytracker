@@ -17,6 +17,12 @@ public static class Changelog
 
     public static readonly IReadOnlyList<Release> Releases =
     [
+        new("1.10", new DateOnly(2026, 9, 8),
+        [
+            "A Trends tab: sleep, breast feeds, bottles and poops drawn as bars, so a week or a month has a shape you can see at a glance.",
+            "Over a range it draws a bar a day. On Today it draws a bar an hour instead, which shows when things happened rather than one meaningless bar."
+        ]),
+
         new("1.9", new DateOnly(2026, 9, 7),
         [
             "The timer starts counting the moment you tap, instead of sometimes sitting at 00:00 until the message saying it started goes away."

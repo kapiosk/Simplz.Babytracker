@@ -46,6 +46,13 @@ A breast feed and a bottle within 20 minutes of each other share a row (breast p
 output within 4 hours of a feed is recorded against that feed — so it's obvious which stool followed
 which feed. With the parent password every cell and every `+` is a button that opens that entry for editing.
 
+**Trends** (`/trends`) — the same measures as the report, drawn. Four small bar charts — sleep,
+breast feeds, bottles, poops — one measure each, because sleep is in hours and bottles are in
+millilitres and two scales on one axis draws something that looks like a fact and is not one.
+Over a range it is a bar a day; on a single day it is a bar an hour, which is the only reading
+that means anything there. Plain HTML bars rather than SVG or a charting library: rectangles are
+what a flex row already is, the colours come from the theme, and nothing has to be fetched.
+
 **Report** (`/report`) — today / 7 days / 30 days / custom range, with:
 
 - totals per type: feed count, total and average feeding time, bottle count and total ml split by milk type,
@@ -247,8 +254,8 @@ notice to appear.
 | `Services/MediaService.cs` | The photos and clips: the files on the volume and the rows that point at them |
 | `Services/Auth.cs` | The roles, the configured passwords, and the check the pages use before rendering anything that writes |
 | `Services/Credentials.cs` | Which password lets you in: stored and hashed if it has been changed, from the configuration if not |
-| `Components/Pages/` | `Home.razor` (the buttons), `Chart.razor`, `Report.razor`, `ManageBabies.razor`, `Password.razor`, `WhatsNew.razor`, `Login.razor` |
-| `Components/` | `EventList`, `BottleDialog`, `EditEventDialog`, `TimeField`, `RangePicker`, `OutputMarks`, `CircuitHeartbeat`, `Icon` |
+| `Components/Pages/` | `Home.razor` (the buttons), `Chart.razor`, `Report.razor`, `Trends.razor`, `ManageBabies.razor`, `Password.razor`, `WhatsNew.razor`, `Login.razor` |
+| `Components/` | `EventList`, `BottleDialog`, `EditEventDialog`, `TimeField`, `RangePicker`, `BarChart`, `OutputMarks`, `CircuitHeartbeat`, `Icon` |
 | `wwwroot/` | `app.css`, `theme.js`, `circuit-watchdog.js`, `media-upload.js`, `whats-new.js`, `manifest.webmanifest`, `service-worker.js`, `offline.html`, icons |
 
 Times are stored in UTC and rendered in the server's local timezone (`TZ`). Everything that has to

@@ -46,6 +46,22 @@ entries themselves. Each is editable with the parent password.
 
 Only finished sleeps and feeds count towards the totals — one still running has no length yet.
 
+## Trends
+
+The same measures as the report, drawn instead of listed: sleep, breast feeds, bottles and poops,
+one small bar chart each.
+
+Over a range of days it draws a bar a day, so a week or a month has a shape — feeding settling
+down, sleep stretching out, nappies steady. On **Today** it draws a bar an *hour* instead, which
+tells you when things happened; a single day as one bar would say nothing at all.
+
+Each chart labels its tallest bar, and the figure beside the title is the whole range. There is
+deliberately one measure per chart rather than everything on one — sleep is in hours and bottles
+are in millilitres, and putting two scales on one axis draws something that looks like a fact and
+is not one.
+
+For the exact numbers, the report has all of them.
+
 ## Which to show a doctor
 
 The chart, generally: it is the format they already read, and the groupings answer *what went in

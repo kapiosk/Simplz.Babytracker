@@ -1,0 +1,94 @@
+@* One measure over one range: a title, the total, and a bar per bucket.
+
+   Plain HTML rather than SVG. Bars are rectangles, and a flex row of divs already is one — no
+   viewBox arithmetic, no rounded corners stretched out of shape when the phone turns, and the
+   colours come from the theme's own variables so light and dark both work for nothing.
+
+   Deliberately one measure per chart. Sleep is in hours and bottles are in millilitres, and two
+   scales on one axis is the surest way to draw something that looks like a fact and is not one.
+
+   The chart's own title carries which measure it is, so the colour never has to. That matters
+   here: the palette has a pair that reads as close to a colourblind eye, and titling every chart
+   is what makes that harmless rather than something to guess at. *@
+
+<div class="card chart-card">
+    <div class="chart-head">
+        <span class="k"><span class="ico @Css"><Icon Name="@IconName" /></span> @Label</span>
+        <span class="v">@Total</span>
+    </div>
+
+    @if (peak <= 0)
+    {
+        <div class="chart-empty">Nothing recorded in this range.</div>
+    }
+    else
+    {
+        <div class="bars @Css" role="img" aria-label="@($"{Label} by {Bucket}, {Total} in total")">
+            @for (var i = 0; i < Points.Count; i++)
+            {
+                var point = Points[i];
+
+                <div class="bar-slot" title="@point.Label: @point.Text">
+                    @if (i == peakIndex)
+                    {
+                        @* Only the tallest is labelled: a number over every bar is unreadable at
+                           this size and says less than the shape already does. *@
+                        <span class="bar-peak">@point.Text</span>
+                    }
+                    <div class="bar" style="height:@Height(point.Value)"></div>
+                </div>
+            }
+        </div>
+
+        <div class="chart-axis">
+            <span>@Points[0].Label</span>
+            @if (Points.Count > 1)
+            {
+                <span>@Points[^1].Label</span>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+
+    /// <summary>The kind's colour class — breast, bottle, poop, sleep.</summary>
+    [Parameter, EditorRequired] public string Css { get; set; } = "";
+
+    [Parameter, EditorRequired] public string IconName { get; set; } = "";
+
+    /// <summary>The whole range in one figure, which is the number worth reading first.</summary>
+    [Parameter, EditorRequired] public string Total { get; set; } = "";
+
+    /// <summary>What one bar covers — "day" or "hour" — for the description a screen reader gets.</summary>
+    [Parameter] public string Bucket { get; set; } = "day";
+
+    [Parameter, EditorRequired] public IReadOnlyList<Point> Points { get; set; } = [];
+
+    private double peak;
+    private int peakIndex = -1;
+
+    protected override void OnParametersSet()
+    {
+        peak = 0;
+        peakIndex = -1;
+
+        for (var i = 0; i < Points.Count; i++)
+        {
+            if (Points[i].Value > peak)
+            {
+                peak = Points[i].Value;
+                peakIndex = i;
+            }
+        }
+    }
+
+    private string Height(double value) =>
+        value <= 0
+            ? "0"
+            : $"{Math.Max(2, Math.Round(value / peak * 100, 2)).ToString(System.Globalization.CultureInfo.InvariantCulture)}%";
+
+    /// <summary>One bar: what it covers, how tall, and how to say it.</summary>
+    public sealed record Point(string Label, double Value, string Text);
+}
