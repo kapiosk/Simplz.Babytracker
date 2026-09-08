@@ -888,3 +888,87 @@ body { padding-top: var(--circuit-banner-h, 0px); }
 }
 
 .release-changes li { margin-bottom: .25rem; }
+
+/* ---------- trends ---------- */
+
+.chart-card { padding-bottom: .6rem; }
+
+.chart-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: .5rem;
+    margin-bottom: .7rem;
+}
+
+.chart-head .k {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    font-size: .8rem;
+    font-weight: 700;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+}
+
+.chart-head .k .ico { font-size: 1.05rem; }
+.chart-head .v { font-size: 1.35rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+
+/* The baseline is the only rule drawn: a grid behind four small charts is more ink than signal.
+   The margin is room for the label above the tallest bar, which otherwise sits on the title. */
+.bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 4.5rem;
+    margin-top: 1.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.bar-slot {
+    position: relative;
+    flex: 1 1 0;
+    height: 100%;
+    display: flex;
+    align-items: flex-end;
+    min-width: 0;
+}
+
+.bar {
+    width: 100%;
+    border-radius: 4px 4px 0 0;
+    background: var(--text-dim);
+}
+
+.bars.sleep  .bar { background: var(--sleep); }
+.bars.breast .bar { background: var(--breast); }
+.bars.bottle .bar { background: var(--bottle); }
+.bars.poop   .bar { background: var(--poop); }
+
+.bar-peak {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: .15rem;
+    font-size: .68rem;
+    font-weight: 700;
+    white-space: nowrap;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+}
+
+.chart-axis {
+    display: flex;
+    justify-content: space-between;
+    margin-top: .35rem;
+    font-size: .7rem;
+    color: var(--text-dim);
+}
+
+.chart-empty {
+    padding: 1rem 0 .4rem;
+    font-size: .85rem;
+    color: var(--text-dim);
+}
