@@ -125,7 +125,13 @@ else
 
 @if (toastUntil > DateTime.UtcNow)
 {
-    <div class="toast">@toast</div>
+    <div class="toast">
+        <span>@toast</span>
+        @if (undo is not null)
+        {
+            <button type="button" class="toast-undo" @onclick="Undo">Undo</button>
+        }
+    </div>
 }
 
 @code {
@@ -135,7 +141,8 @@ else
     private Baby? baby;
     private List<BabyEvent> recent = [];
 
-    // A feed and a sleep run independently of each other, so each is tracked on its own.
+    // Only one of them can be running, but which one it is decides which button is which, so
+    // each is held separately rather than as one "whatever is running".
     private BabyEvent? runningFeed;
     private BabyEvent? runningSleep;
 
@@ -146,6 +153,9 @@ else
 
     private string? toast;
     private DateTime toastUntil = DateTime.MinValue;
+
+    /// <summary>A discarded short sleep, held only while its toast is up, in case that was wrong.</summary>
+    private BabyEvent? undo;
 
     private CancellationTokenSource? ticker;
 
@@ -257,13 +267,23 @@ else
             return;
         }
 
-        // Read before starting: by the time it returns, the other one has already been ended.
-        var ended = kind == EventKind.Sleep ? runningFeed : runningSleep;
-
-        await Events.StartAsync(baby.Id, kind);
+        var result = await Events.StartAsync(baby.Id, kind);
 
         var started = kind == EventKind.Sleep ? "Sleep started" : "Breast feed started";
-        Toast(ended is null ? started : $"{started} · {Display.Label(ended).ToLowerInvariant()} ended");
+
+        if (result.Ended is not { } ended)
+        {
+            Toast(started);
+            return;
+        }
+
+        var what = Display.Label(ended).ToLowerInvariant();
+
+        // Two things in one toast, so the second half is kept short. The full "under ten
+        // minutes" wording belongs on the stop-by-hand path, which has room for it and an Undo.
+        Toast(result.EndedWasDiscarded
+            ? $"{started} · short {what} not kept"
+            : $"{started} · {what} ended");
     }
 
     private async Task Stop(BabyEvent? session)
@@ -273,10 +293,33 @@ else
             return;
         }
 
-        var elapsed = DateTime.UtcNow - session.StartUtc;
-        await Events.StopAsync(session.Id);
-        Toast($"{Display.Label(session)} · {Display.Duration(elapsed)}");
+        var result = await Events.StopAsync(session.Id);
+
+        if (result.Outcome == StopOutcome.Discarded)
+        {
+            // Said out loud, with a way back: the rule is a guess about what was meant, and a
+            // guess that deletes something silently is worse than no rule at all.
+            Toast($"{Display.Label(session)} under {Minutes(BabyEvent.ShortestSleep)} — not kept",
+                seconds: 8, undoing: result.Discarded);
+            return;
+        }
+
+        Toast($"{Display.Label(session)} · {Display.Duration(result.Elapsed)}");
     }
+
+    private async Task Undo()
+    {
+        if (undo is not { } putBack || !canEdit)
+        {
+            return;
+        }
+
+        undo = null;
+        await Events.AddAsync(putBack);
+        Toast($"{Display.Label(putBack)} put back");
+    }
+
+    private static string Minutes(TimeSpan t) => $"{(int)t.TotalMinutes} minutes";
 
     private async Task Log(EventKind kind)
     {
@@ -347,10 +390,11 @@ else
         Toast("Deleted");
     }
 
-    private void Toast(string message)
+    private void Toast(string message, double seconds = 2.5, BabyEvent? undoing = null)
     {
         toast = message;
-        toastUntil = DateTime.UtcNow.AddSeconds(2.5);
+        toastUntil = DateTime.UtcNow.AddSeconds(seconds);
+        undo = undoing;
         Wake();
     }
 

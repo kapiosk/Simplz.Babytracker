@@ -1,0 +1,499 @@
+@page "/pump"
+@rendermode InteractiveServer
+@implements IAsyncDisposable
+@inject PumpService Pumping
+@inject BabyService Babies
+@inject ILogger<Pump> Logger
+
+<PageTitle>Pumping · Baby Tracker</PageTitle>
+
+@* Says, from the server, that this page still has a circuit. *@
+<CircuitHeartbeat />
+
+<h1>Pumping</h1>
+
+<div class="card stock">
+    <div class="stock-head">
+        <span class="k"><span class="ico breast"><Icon Name="pump" /></span> In the fridge</span>
+
+        @if (canEdit)
+        {
+            <button type="button" class="btn small" @onclick="() => showStock = true">
+                @(stock.IsKnown ? "Correct" : "Set")
+            </button>
+        }
+    </div>
+
+    @if (!stock.IsKnown)
+    {
+        <div class="stock-empty">
+            Nothing pumped yet. Start a session below, or say what is already in the fridge.
+        </div>
+    }
+    else
+    {
+        <div class="stock-figure @(stock.Ml < 0 ? "under" : "")">
+            <span class="v">@Figure(stock.Ml)</span><span class="u">ml</span>
+        </div>
+
+        <div class="stock-ledger">
+            @if (stock.WasSet)
+            {
+                <span>@stock.OpeningMl ml counted @When(stock.FromUtc!.Value)</span>
+            }
+            else
+            {
+                <span>counting from the first session, @When(stock.FromUtc!.Value)</span>
+            }
+            @* A term worth nothing is left out rather than written as "−0", which reads as
+               something having gone wrong rather than as nothing having happened. *@
+            @if (stock.PumpedMl > 0)
+            {
+                <span class="up">+@stock.PumpedMl pumped</span>
+            }
+            @if (stock.TakenMl > 0)
+            {
+                <span class="down">−@stock.TakenMl given</span>
+            }
+            @if (stock.PumpedMl == 0 && stock.TakenMl == 0)
+            {
+                <span>nothing in or out since</span>
+            }
+        </div>
+
+        @if (stock.Ml < 0)
+        {
+            <div class="stock-warn">
+                That is less than nothing, so more breast milk has been given than this count ever
+                saw going in.
+                @if (canEdit)
+                {
+                    @* Only worth saying to somebody who can act on it: the read-only password
+                       cannot correct anything. *@
+                    <text>Correct it and the count starts again from the figure you give.</text>
+                }
+            </div>
+        }
+    }
+</div>
+
+@if (canEdit)
+{
+    <div class="actions">
+        @if (running is not null)
+        {
+            <button class="action breast running wide" @onclick="Stop">
+                <span class="ico"><Icon Name="pump" /></span>
+                <span class="timer">@Display.Clock(DateTime.UtcNow - running.StartUtc)</span>
+                <span>Tap to stop</span>
+                <span class="hint">started @Display.ToLocal(running.StartUtc).ToString("HH:mm")</span>
+            </button>
+        }
+        else
+        {
+            <button class="action breast wide" @onclick="Start">
+                <span class="ico"><Icon Name="pump" /></span>
+                <span>Start pumping</span>
+                <span class="hint">@lastHint</span>
+            </button>
+        }
+    </div>
+}
+else if (running is not null)
+{
+    <div class="card running-note">
+        <span class="ico breast"><Icon Name="pump" /></span>
+        Pumping since @Display.ToLocal(running.StartUtc).ToString("HH:mm")
+        · @Display.Clock(DateTime.UtcNow - running.StartUtc)
+    </div>
+}
+
+<div class="stats">
+    <div class="stat breast">
+        <div class="k">Pumped today</div>
+        <div class="v">@today.Ml</div>
+        <div class="x">ml over @Sessions(today.Sessions)</div>
+    </div>
+
+    <div class="stat breast">
+        <div class="k">Time on the pump today</div>
+        <div class="v">@(today.Time == TimeSpan.Zero ? "—" : Display.Duration(today.Time))</div>
+        <div class="x">@(today.Sessions > 0 ? $"about {today.Ml / Math.Max(1, today.Sessions)} ml a session" : "nothing yet today")</div>
+    </div>
+</div>
+
+<div class="section-title">
+    <span>Pump log</span>
+</div>
+
+<div class="card">
+    @if (recent.Count == 0)
+    {
+        <div class="empty">Nothing logged yet.</div>
+    }
+    else
+    {
+        <ul class="events">
+            @foreach (var entry in recent)
+            {
+                <li class="event" @key="entry.Id">
+                    <span class="ico @(entry.Kind == PumpEntryKind.StockSet ? "" : "breast")">
+                        <Icon Name="@(entry.Kind == PumpEntryKind.StockSet ? "pencil" : "pump")" />
+                    </span>
+
+                    <div class="body">
+                        <div class="name">@Headline(entry)</div>
+                        <div class="meta">
+                            @Display.ToLocal(entry.StartUtc).ToString("ddd d MMM, HH:mm")@Detail(entry)
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(entry.Notes))
+                        {
+                            <div class="notes">@entry.Notes</div>
+                        }
+                    </div>
+
+                    @if (canEdit)
+                    {
+                        <button type="button" class="icon-btn" @onclick="() => Edit(entry)"
+                                title="Edit" aria-label="Edit @Headline(entry)"><Icon Name="pencil" /></button>
+                    }
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@if (canEdit)
+{
+    <button class="btn block subtle" @onclick="AddEarlier">+ Add a session from earlier</button>
+}
+
+<p class="login-note">
+    A bottle of breast milk logged on <NavLink href="">Track</NavLink> comes out of this count —
+    which is why the figure here can move without anybody touching this page.
+</p>
+
+@if (showStock)
+{
+    <AmountDialog Title="@(stock.IsKnown ? "Correct the stock" : "Set the stock")"
+                  IconName="pump" Css="breast"
+                  Label="What is in the fridge now (ml)"
+                  Hint="Everything before this stops counting. From here on it goes up as you pump and down as breast-milk bottles are given."
+                  Max="5000" Presets="@StockPresets" Initial="@(stock.IsKnown ? stock.Ml : null)"
+                  Required="true" SaveText="Set"
+                  OnCancel="() => showStock = false" OnSave="SaveStock" />
+}
+
+@if (stopping is not null)
+{
+    <AmountDialog Title="How much came out?" IconName="pump" Css="breast"
+                  Label="Pumped (ml)"
+                  Hint="@($"{Display.Duration(stoppedAfter)} on the pump. Leave it empty if you do not know yet — it can be filled in from the log later.")"
+                  Max="2000" Presets="@PumpPresets"
+                  CancelText="Skip" OnCancel="() => SaveStop(new AmountDialog.Entry(null, null))"
+                  OnSave="SaveStop" />
+}
+
+@if (editing is not null)
+{
+    <PumpEntryDialog Entry="editing" OnCancel="() => editing = null"
+                     OnSave="SaveEdit" OnDelete="DeleteEntry" />
+}
+
+@if (toastUntil > DateTime.UtcNow)
+{
+    <div class="toast">@toast</div>
+}
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    [Inject] private EventService Events { get; set; } = default!;
+
+    private static readonly int[] PumpPresets = [30, 60, 90, 120, 150, 180];
+    private static readonly int[] StockPresets = [0, 100, 200, 300, 500, 750];
+
+    private bool canEdit;
+    private Baby? baby;
+
+    private Stock stock = Stock.Unknown;
+    private PumpEntry? running;
+    private List<PumpEntry> recent = [];
+    private (int Ml, int Sessions, TimeSpan Time) today;
+    private string lastHint = "no session yet";
+
+    private bool showStock;
+    private PumpEntry? editing;
+
+    /// <summary>The session whose amount is being asked for, held while the sheet is open.</summary>
+    private PumpEntry? stopping;
+    private TimeSpan stoppedAfter;
+
+    private string? toast;
+    private DateTime toastUntil = DateTime.MinValue;
+
+    private CancellationTokenSource? ticker;
+    private readonly SemaphoreSlim wake = new(0, 1);
+
+    protected override async Task OnInitializedAsync()
+    {
+        canEdit = await Access.CanEditAsync(AuthState);
+        baby = await Babies.SelectedAsync(AuthState);
+        await Reload();
+
+        Pumping.Changed += OnChanged;
+
+        // The stock goes down when a breast-milk bottle is logged, and that happens on Track.
+        // Without this the figure here would sit there stale until something else moved it.
+        Events.Changed += OnChanged;
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender && ticker is null)
+        {
+            ticker = new CancellationTokenSource();
+            _ = TickAsync(ticker.Token);
+        }
+    }
+
+    /// <summary>
+    /// Keeps the running timer moving, and the "last session" hint honest. Every second while a
+    /// session is running, otherwise every half a minute — see the same note on Home: each tick
+    /// is a render down a connection that drops often enough already.
+    /// </summary>
+    private async Task TickAsync(CancellationToken ct)
+    {
+        try
+        {
+            while (!ct.IsCancellationRequested)
+            {
+                var interval = running is not null || toastUntil > DateTime.UtcNow
+                    ? TimeSpan.FromSeconds(1)
+                    : TimeSpan.FromSeconds(30);
+
+                await wake.WaitAsync(interval, ct);
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private void OnChanged(int babyId)
+    {
+        if (babyId != baby?.Id)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(async () =>
+        {
+            try
+            {
+                await Reload();
+                StateHasChanged();
+                Wake();
+            }
+            catch (Exception ex)
+            {
+                // Runs because somebody else logged something. An exception escaping here would
+                // take this page's circuit down with the error bar, for a change that was never
+                // this phone's doing.
+                Logger.LogError(ex, "Refreshing the pump page after a change failed.");
+            }
+        });
+    }
+
+    private async Task Reload()
+    {
+        if (baby is null)
+        {
+            return;
+        }
+
+        stock = await Pumping.GetStockAsync(baby.Id);
+        recent = await Pumping.GetRecentAsync(baby.Id, 20);
+        running = recent.FirstOrDefault(e => e.IsRunning) ?? await Pumping.GetRunningAsync(baby.Id);
+
+        var midnight = Display.ToUtc(DateTime.Now.Date);
+        today = await Pumping.TotalsAsync(baby.Id, midnight, midnight.AddDays(1));
+
+        var last = recent.FirstOrDefault(e => e.Kind == PumpEntryKind.Session && !e.IsRunning);
+        lastHint = last is null ? "no session yet" : $"last {Display.Ago(last.EndUtc ?? last.StartUtc)}";
+    }
+
+    private async Task Start()
+    {
+        if (!canEdit || baby is null)
+        {
+            return;
+        }
+
+        await Pumping.StartAsync(baby.Id);
+        Toast("Pumping started");
+    }
+
+    private void Stop()
+    {
+        if (!canEdit || running is null)
+        {
+            return;
+        }
+
+        // Asked for before the session is closed, so cancelling the sheet leaves it running
+        // rather than saving a session nobody finished answering for.
+        stopping = running;
+        stoppedAfter = DateTime.UtcNow - running.StartUtc;
+    }
+
+    private async Task SaveStop(AmountDialog.Entry entry)
+    {
+        var session = stopping;
+        stopping = null;
+
+        if (session is null || !canEdit)
+        {
+            return;
+        }
+
+        await Pumping.StopAsync(session.Id, entry.AmountMl, entry.Notes);
+        Toast(entry.AmountMl is > 0
+            ? $"{entry.AmountMl} ml in {Display.Duration(stoppedAfter)}"
+            : $"Session saved · {Display.Duration(stoppedAfter)}");
+    }
+
+    private async Task SaveStock(AmountDialog.Entry entry)
+    {
+        showStock = false;
+
+        if (!canEdit || baby is null || entry.AmountMl is null)
+        {
+            return;
+        }
+
+        await Pumping.SetStockAsync(baby.Id, entry.AmountMl.Value, entry.Notes);
+        Toast($"Stock set to {entry.AmountMl} ml");
+    }
+
+    private void Edit(PumpEntry entry)
+    {
+        if (canEdit)
+        {
+            editing = entry;
+        }
+    }
+
+    /// <summary>Opens the editor on a blank session, pre-filled as one that has just finished.</summary>
+    private void AddEarlier() => editing = new PumpEntry
+    {
+        BabyId = baby?.Id ?? 0,
+        Kind = PumpEntryKind.Session,
+        StartUtc = DateTime.UtcNow.AddMinutes(-20),
+        EndUtc = DateTime.UtcNow
+    };
+
+    private async Task SaveEdit(PumpEntry updated)
+    {
+        editing = null;
+
+        if (!canEdit || baby is null)
+        {
+            return;
+        }
+
+        if (updated.Id == 0)
+        {
+            await Pumping.AddAsync(updated);
+            Toast("Added");
+            return;
+        }
+
+        await Pumping.UpdateAsync(updated);
+        Toast("Saved");
+    }
+
+    private async Task DeleteEntry(int id)
+    {
+        editing = null;
+
+        if (!canEdit)
+        {
+            return;
+        }
+
+        await Pumping.DeleteAsync(id);
+        Toast("Deleted");
+    }
+
+    private static string Headline(PumpEntry entry) => entry.Kind switch
+    {
+        PumpEntryKind.StockSet => $"Stock set to {entry.AmountMl ?? 0} ml",
+        _ when entry.IsRunning => "Pumping now",
+        _ => entry.AmountMl is > 0 ? $"Pumped {entry.AmountMl} ml" : "Pumped",
+    };
+
+    private static string Detail(PumpEntry entry) =>
+        entry.Kind == PumpEntryKind.StockSet || entry.Duration is not { } length
+            ? ""
+            : $" · {Display.Duration(length)}";
+
+    private static string Sessions(int count) => count == 1 ? "1 session" : $"{count} sessions";
+
+    /// <summary>
+    /// A real minus sign rather than the hyphen int formatting gives, to match the one in the
+    /// ledger line underneath it.
+    /// </summary>
+    private static string Figure(int ml) => ml < 0 ? $"−{-ml}" : ml.ToString();
+
+    /// <summary>Today and yesterday by name; anything older by date.</summary>
+    private static string When(DateTime utc)
+    {
+        var local = Display.ToLocal(utc).Date;
+        var today = DateTime.Now.Date;
+
+        if (local == today) return "today";
+        if (local == today.AddDays(-1)) return "yesterday";
+        return local.ToString("d MMM");
+    }
+
+    private void Toast(string message)
+    {
+        toast = message;
+        toastUntil = DateTime.UtcNow.AddSeconds(2.5);
+        Wake();
+    }
+
+    /// <summary>Brings the next render forward — see the same helper on Home.</summary>
+    private void Wake()
+    {
+        try
+        {
+            wake.Release();
+        }
+        catch (SemaphoreFullException)
+        {
+            // Already due to wake.
+        }
+        catch (ObjectDisposedException)
+        {
+            // The page has gone.
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Pumping.Changed -= OnChanged;
+        Events.Changed -= OnChanged;
+
+        if (ticker is not null)
+        {
+            await ticker.CancelAsync();
+            ticker.Dispose();
+            ticker = null;
+        }
+
+        wake.Dispose();
+    }
+}

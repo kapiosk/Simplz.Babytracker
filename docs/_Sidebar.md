@@ -2,6 +2,7 @@
 
 - **[Home](Home)**
 - [Tracking a day](Tracking-a-day)
+- [Pumping](Pumping)
 - [The chart and the report](Chart-and-report)
 - [Photos and video](Photos-and-video)
 - [More than one baby](More-than-one-baby)

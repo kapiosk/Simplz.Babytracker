@@ -3,6 +3,33 @@ using Simplz.Babytracker.Data;
 
 namespace Simplz.Babytracker.Services;
 
+/// <summary>What became of a session that was asked to stop.</summary>
+public enum StopOutcome
+{
+    /// <summary>Stopped and kept, as normal.</summary>
+    Stopped = 0,
+
+    /// <summary>Too short to have been meant, so it was thrown away instead of recorded.</summary>
+    Discarded = 1,
+
+    /// <summary>There was nothing running — stopped on the other phone a moment earlier.</summary>
+    NotRunning = 2
+}
+
+/// <param name="Discarded">
+/// The thrown-away entry, ready to be handed back to <see cref="EventService.AddAsync"/> if
+/// whoever stopped it says the app got that wrong. Null unless it was discarded.
+/// </param>
+public sealed record StopResult(StopOutcome Outcome, TimeSpan Elapsed, BabyEvent? Discarded);
+
+/// <param name="Started">The new session, or the one already running if there was one.</param>
+/// <param name="Ended">The other session this one displaced, if any.</param>
+/// <param name="EndedWasDiscarded">
+/// Whether that displaced session was thrown away rather than recorded, for having been too
+/// short to have been meant.
+/// </param>
+public sealed record StartResult(BabyEvent Started, BabyEvent? Ended, bool EndedWasDiscarded);
+
 public class EventService(IDbContextFactory<AppDbContext> factory, MediaService media, ILogger<EventService> log)
 {
     /// <summary>
@@ -39,8 +66,8 @@ public class EventService(IDbContextFactory<AppDbContext> factory, MediaService 
     }
 
     /// <summary>
-    /// The session of this kind that has been started and not stopped, if there is one. A feed
-    /// and a sleep run independently, so each is asked for separately.
+    /// The session of this kind that has been started and not stopped, if there is one. Asked
+    /// per kind because the caller wants to know which it is, not merely that something runs.
     /// </summary>
     public async Task<BabyEvent?> GetRunningAsync(int babyId, EventKind kind, CancellationToken ct = default)
     {
@@ -58,12 +85,12 @@ public class EventService(IDbContextFactory<AppDbContext> factory, MediaService 
     /// at the moment this one begins rather than at some rounded-off time. Enforced here rather
     /// than on the page, so it holds however the session was started.
     /// </summary>
-    public async Task<BabyEvent> StartAsync(int babyId, EventKind kind, CancellationToken ct = default)
+    public async Task<StartResult> StartAsync(int babyId, EventKind kind, CancellationToken ct = default)
     {
         var running = await GetRunningAsync(babyId, kind, ct);
         if (running is not null)
         {
-            return running;
+            return new StartResult(running, null, false);
         }
 
         var now = DateTime.UtcNow;
@@ -76,16 +103,46 @@ public class EventService(IDbContextFactory<AppDbContext> factory, MediaService 
                         && BabyEvent.LastingKinds.Contains(e.Kind))
             .ToListAsync(ct);
 
+        // Tapping sleep and then feed, seconds apart, is the mis-tap the ten-minute floor is
+        // there for, so the session being cut short here is thrown away on the same terms as
+        // one stopped by hand. Same media exception, for the same reason.
+        var withMedia = others.Count == 0
+            ? []
+            : await db.Media.Where(m => others.Select(o => o.Id).Contains(m.BabyEventId))
+                .Select(m => m.BabyEventId)
+                .Distinct()
+                .ToListAsync(ct);
+
+        BabyEvent? ended = null;
+        var endedWasDiscarded = false;
+
         foreach (var other in others)
         {
-            other.EndUtc = now;
+            var discard = !withMedia.Contains(other.Id)
+                          && BabyEvent.TooShortToKeep(other.Kind, now - other.StartUtc);
+
+            if (discard)
+            {
+                db.Events.Remove(other);
+            }
+            else
+            {
+                other.EndUtc = now;
+            }
+
+            // Only one lasting kind can be running — this method is what guarantees it — so the
+            // loop finds at most one. Reporting the first keeps that true if it ever finds two.
+            if (ended is null)
+            {
+                (ended, endedWasDiscarded) = (other, discard);
+            }
         }
 
         var ev = new BabyEvent { BabyId = babyId, Kind = kind, StartUtc = now };
         db.Events.Add(ev);
         await db.SaveChangesAsync(ct);
         NotifyChanged(babyId);
-        return ev;
+        return new StartResult(ev, ended, endedWasDiscarded);
     }
 
     /// <summary>What starting this kind would end, so the page can say so before it happens.</summary>
@@ -101,18 +158,49 @@ public class EventService(IDbContextFactory<AppDbContext> factory, MediaService 
             .FirstOrDefaultAsync(ct);
     }
 
-    public async Task StopAsync(int id, CancellationToken ct = default)
+    /// <summary>
+    /// Stops a running session — or throws it away, if it was too short to have been meant. See
+    /// <see cref="BabyEvent.TooShortToKeep"/> for which those are and why.
+    /// </summary>
+    public async Task<StopResult> StopAsync(int id, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         var ev = await db.Events.FirstOrDefaultAsync(e => e.Id == id, ct);
         if (ev is null || ev.EndUtc is not null)
         {
-            return;
+            return new StopResult(StopOutcome.NotRunning, TimeSpan.Zero, null);
         }
 
-        ev.EndUtc = DateTime.UtcNow;
+        var now = DateTime.UtcNow;
+        var elapsed = now - ev.StartUtc;
+
+        // A photo hanging off it is somebody having gone to the trouble, so whatever the clock
+        // says the entry was meant. Barely reachable — it needs the editor opened mid-sleep and
+        // the timer stopped inside ten minutes — but the alternative is deleting their file.
+        var hasMedia = await db.Media.AnyAsync(m => m.BabyEventId == ev.Id, ct);
+
+        if (!hasMedia && BabyEvent.TooShortToKeep(ev.Kind, elapsed))
+        {
+            // Copied out before the delete, so the page can offer to put it back.
+            var discarded = new BabyEvent
+            {
+                BabyId = ev.BabyId,
+                Kind = ev.Kind,
+                StartUtc = ev.StartUtc,
+                EndUtc = now,
+                Notes = ev.Notes
+            };
+
+            db.Events.Remove(ev);
+            await db.SaveChangesAsync(ct);
+            NotifyChanged(discarded.BabyId);
+            return new StopResult(StopOutcome.Discarded, elapsed, discarded);
+        }
+
+        ev.EndUtc = now;
         await db.SaveChangesAsync(ct);
         NotifyChanged(ev.BabyId);
+        return new StopResult(StopOutcome.Stopped, elapsed, null);
     }
 
     /// <summary>Logs a point-in-time event (poop, urine, vomit).</summary>

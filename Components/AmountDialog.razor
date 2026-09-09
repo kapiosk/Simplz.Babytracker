@@ -1,0 +1,82 @@
+@* A number of millilitres and an optional note, and nothing else.
+   Asked twice on the pump page — for what a session produced, and for correcting the stock —
+   which are the same question with different words around it. *@
+
+<div class="sheet-backdrop" @onclick="() => OnCancel.InvokeAsync()">
+    <div class="sheet" @onclick:stopPropagation="true">
+        <h2><span class="ico @Css"><Icon Name="@IconName" /></span> @Title</h2>
+
+        @if (!string.IsNullOrWhiteSpace(Hint))
+        {
+            <div class="hint-line sheet-hint">@Hint</div>
+        }
+
+        <div class="field">
+            <label for="@amountId">@Label</label>
+            <input id="@amountId" type="number" inputmode="numeric" min="0" max="@Max" step="5" @bind="amount" />
+
+            <div class="amounts">
+                @foreach (var preset in Presets)
+                {
+                    <button type="button" class="chip @(amount == preset ? "on" : "")"
+                            @onclick="() => amount = preset">@preset</button>
+                }
+            </div>
+        </div>
+
+        <div class="field">
+            <label for="@notesId">Notes (optional)</label>
+            <input id="@notesId" type="text" maxlength="500" @bind="notes" />
+        </div>
+
+        <div class="row-btns">
+            <button type="button" class="btn" @onclick="() => OnCancel.InvokeAsync()">@CancelText</button>
+            <button type="button" class="btn primary" disabled="@(Required && amount is null)" @onclick="Save">@SaveText</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = "";
+
+    [Parameter, EditorRequired] public string IconName { get; set; } = "";
+
+    /// <summary>The colour class for the icon in the heading.</summary>
+    [Parameter] public string Css { get; set; } = "";
+
+    [Parameter] public string Label { get; set; } = "Amount (ml)";
+
+    [Parameter] public string? Hint { get; set; }
+
+    [Parameter] public int Max { get; set; } = 1000;
+
+    [Parameter] public int[] Presets { get; set; } = [];
+
+    [Parameter] public int? Initial { get; set; }
+
+    /// <summary>When true there is nothing to save without a figure, so Save stays disabled.</summary>
+    [Parameter] public bool Required { get; set; }
+
+    [Parameter] public string CancelText { get; set; } = "Cancel";
+
+    [Parameter] public string SaveText { get; set; } = "Save";
+
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    [Parameter] public EventCallback<Entry> OnSave { get; set; }
+
+    private int? amount;
+    private string? notes;
+
+    // Unique per instance: two of these can be on the page at once, and duplicate ids would
+    // point every label at whichever input came first.
+    private readonly string amountId = $"amount-{Guid.NewGuid():N}";
+    private readonly string notesId = $"amount-notes-{Guid.NewGuid():N}";
+
+    protected override void OnInitialized() => amount = Initial;
+
+    private Task Save() =>
+        OnSave.InvokeAsync(new Entry(amount, string.IsNullOrWhiteSpace(notes) ? null : notes.Trim()));
+
+    public sealed record Entry(int? AmountMl, string? Notes);
+}

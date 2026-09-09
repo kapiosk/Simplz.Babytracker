@@ -40,6 +40,7 @@ if (!string.IsNullOrEmpty(dataDirectory))
 
 builder.Services.AddDbContextFactory<AppDbContext>(options => options.UseSqlite(connectionString));
 builder.Services.AddSingleton<EventService>();
+builder.Services.AddSingleton<PumpService>();
 builder.Services.AddSingleton<BabyService>();
 builder.Services.AddSingleton<Credentials>();
 
