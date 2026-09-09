@@ -23,16 +23,16 @@
     }
     else
     {
-        <div class="bars @Css" role="img" aria-label="@($"{Label} by {Bucket}, {Total} in total")">
+        <div class="bars @Css" role="img" aria-label="@Description()">
             @for (var i = 0; i < Points.Count; i++)
             {
                 var point = Points[i];
 
                 <div class="bar-slot" title="@point.Label: @point.Text">
-                    @if (i == peakIndex)
+                    @if (!LabelEvery && i == peakIndex)
                     {
-                        @* Only the tallest is labelled: a number over every bar is unreadable at
-                           this size and says less than the shape already does. *@
+                        @* When there are too many to label, the tallest still carries a number
+                           so the scale is not a mystery. The rest are in the list underneath. *@
                         <span class="bar-peak">@point.Text</span>
                     }
                     <div class="bar" style="height:@Height(point.Value)"></div>
@@ -40,13 +40,43 @@
             }
         </div>
 
-        <div class="chart-axis">
-            <span>@Points[0].Label</span>
-            @if (Points.Count > 1)
-            {
-                <span>@Points[^1].Label</span>
-            }
-        </div>
+        @if (LabelEvery)
+        {
+            @* A parallel row rather than a footer inside each slot: the bars are sized as a
+               percentage of their slot, so putting anything in there would shorten them.
+               Same flex basis and same gap, so the columns line up. *@
+            <div class="bar-feet">
+                @foreach (var point in Points)
+                {
+                    <span class="foot">
+                        <span class="l">@point.Label</span>
+                        <span class="v">@point.Compact</span>
+                    </span>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="chart-axis">
+                <span>@Points[0].Label</span>
+                @if (Points.Count > 1)
+                {
+                    <span>@Points[^1].Label</span>
+                }
+            </div>
+
+            @* Plain <details>, deliberately: no @onclick, so opening it costs no round trip and
+               works with the circuit down — the same reasoning as the reload button. *@
+            <details class="chart-numbers">
+                <summary>Every @Bucket</summary>
+                <div class="numbers">
+                    @foreach (var point in Points)
+                    {
+                        <span><b>@point.Label</b> @point.Listed</span>
+                    }
+                </div>
+            </details>
+        }
     }
 </div>
 
@@ -66,8 +96,25 @@
 
     [Parameter, EditorRequired] public IReadOnlyList<Point> Points { get; set; } = [];
 
+    /// <summary>
+    /// Up to this many bars, every one carries its own figure under it. Past it there is not
+    /// the width, and the list underneath is what answers "what was that one worth".
+    /// </summary>
+    public const int LabelEveryUpTo = 8;
+
+    private bool LabelEvery => Points.Count <= LabelEveryUpTo;
+
     private double peak;
     private int peakIndex = -1;
+
+    /// <summary>
+    /// What a screen reader is told in place of the drawing. Every bucket and its figure, since
+    /// "sleep by day, 32h in total" describes the shape of the thing without saying anything
+    /// that is in it.
+    /// </summary>
+    private string Description() =>
+        $"{Label} by {Bucket}, {Total} in total. "
+        + string.Join(". ", Points.Select(p => $"{p.Label}, {p.Text}"));
 
     protected override void OnParametersSet()
     {
@@ -90,5 +137,23 @@
             : $"{Math.Max(2, Math.Round(value / peak * 100, 2)).ToString(System.Globalization.CultureInfo.InvariantCulture)}%";
 
     /// <summary>One bar: what it covers, how tall, and how to say it.</summary>
-    public sealed record Point(string Label, double Value, string Text);
+    /// <param name="Text">The full reading — "12h 20m", "5 feeds", "450 ml".</param>
+    /// <param name="Short">
+    /// The same figure with the unit dropped, for under a bar where there is no room for it.
+    /// The chart is titled, so a bare number there is not ambiguous. Optional: where the full
+    /// reading is already short enough, leave it and both are the same.
+    /// </param>
+    public sealed record Point(string Label, double Value, string Text, string? Short = null)
+    {
+        /// <summary>What goes under a bar. A dash for nothing: "0 feeds" seven times over
+        /// reads like a fault, where a row of dashes reads as the quiet week it was.</summary>
+        public string Compact => Value <= 0 ? "–" : Short ?? Text;
+
+        /// <summary>
+        /// What goes in the full list, where there is room for the unit. Still a dash for
+        /// nothing — in thirty days of which twenty are empty, "none" twenty times buries the
+        /// ten readings that are the reason for opening it.
+        /// </summary>
+        public string Listed => Value <= 0 ? "–" : Text;
+    }
 }

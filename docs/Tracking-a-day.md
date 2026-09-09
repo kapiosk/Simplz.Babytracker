@@ -25,6 +25,9 @@ This applies to sleep only. A short **breast feed** is kept however brief it was
 minutes of feeding is simply a feed. It also applies only to the timer: anything you type in
 yourself, or add from earlier, is kept whatever length you give it.
 
+Both lists — **Recent** on Track and the entries on the report — show how long each one lasted
+beside its time, or *still asleep* / *still feeding* while it is running.
+
 ## The four that are moments
 
 **Bottle**, **Poop**, **Urine** and **Vomit** are logged at the time you tap them.

@@ -102,8 +102,15 @@ else
         var extra = e.Kind switch
         {
             EventKind.BreastFeed when e.EndUtc is null => "still feeding",
-            EventKind.BreastFeed => Display.Duration(e.Duration!.Value),
+            EventKind.Sleep when e.EndUtc is null => "still asleep",
             EventKind.BottleFeed when e.AmountMl is > 0 => $"{e.AmountMl} ml",
+
+            // Anything that lasted says how long for. Written as "whatever has a duration"
+            // rather than kind by kind on purpose: only the kinds that are a stretch of time
+            // ever get an end, and listing them here is what went wrong before — sleep arrived
+            // and this switch was not one of the places anybody thought to add it to, so a nap
+            // showed its start time and nothing else.
+            _ when e.Duration is { } length => Display.Duration(length),
             _ => null
         };
 

@@ -17,6 +17,14 @@ public static class Changelog
 
     public static readonly IReadOnlyList<Release> Releases =
     [
+        new("1.12", new DateOnly(2026, 9, 9),
+        [
+            "Sleeps now say how long they lasted, in Recent on Track and in the report's entries. They were showing only the time they started, which for a sleep is the less useful half.",
+            "One still running reads \"still asleep\", the way a feed already read \"still feeding\".",
+            "On Trends, over a week or less every bar now carries its own figure underneath it — no longer just the tallest one.",
+            "Over a longer range, or by hour, there is no room for that, so \"Every day\" under a chart opens the full list of figures instead."
+        ]),
+
         new("1.11", new DateOnly(2026, 9, 9),
         [
             "A Pump tab. Start and stop it the way a feed works, then say how much came out — and it keeps a running figure for what is in the fridge.",
