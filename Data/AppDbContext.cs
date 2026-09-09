@@ -12,6 +12,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     public DbSet<EventMedia> Media => Set<EventMedia>();
 
+    public DbSet<PumpEntry> PumpEntries => Set<PumpEntry>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<AppSetting>().HasKey(x => x.Key);
@@ -19,6 +21,19 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<BabyEvent>(e =>
         {
             // Every query is for one baby at a time, so the baby leads each index.
+            e.HasIndex(x => new { x.BabyId, x.StartUtc });
+            e.HasIndex(x => new { x.BabyId, x.Kind, x.StartUtc });
+
+            e.HasOne<Baby>()
+                .WithMany()
+                .HasForeignKey(x => x.BabyId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PumpEntry>(e =>
+        {
+            // The stock is worked out by reading this table forwards from the last correction,
+            // so every query is one baby in date order.
             e.HasIndex(x => new { x.BabyId, x.StartUtc });
             e.HasIndex(x => new { x.BabyId, x.Kind, x.StartUtc });
 

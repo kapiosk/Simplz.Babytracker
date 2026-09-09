@@ -11,6 +11,20 @@ the app, or pick it up on a different phone — it lives on the server, not in t
 A baby cannot be feeding and asleep at the same time, so **starting one ends the other**, at the
 moment the new one begins. The message at the bottom of the screen says when that has happened.
 
+Pumping is the exception, and lives on its own tab — see [Pumping](Pumping). Starting it ends
+neither of these, because the baby can be asleep while you pump.
+
+### Sleeps under ten minutes are not recorded
+
+A sleep stopped less than ten minutes after it started is taken to be the wrong button rather than
+a nap, and is thrown away instead of logged — otherwise every mis-tap sits in the averages pulling
+them down. The message at the bottom says when that has happened and offers **Undo**, so a real
+eight-minute doze in the car seat is one tap to keep.
+
+This applies to sleep only. A short **breast feed** is kept however brief it was, because six
+minutes of feeding is simply a feed. It also applies only to the timer: anything you type in
+yourself, or add from earlier, is kept whatever length you give it.
+
 ## The four that are moments
 
 **Bottle**, **Poop**, **Urine** and **Vomit** are logged at the time you tap them.

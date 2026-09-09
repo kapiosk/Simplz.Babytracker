@@ -17,6 +17,16 @@ public static class Changelog
 
     public static readonly IReadOnlyList<Release> Releases =
     [
+        new("1.11", new DateOnly(2026, 9, 9),
+        [
+            "A Pump tab. Start and stop it the way a feed works, then say how much came out — and it keeps a running figure for what is in the fridge.",
+            "That figure counts itself: up as you pump, down as breast-milk bottles are given on Track. Tap Correct whenever you have counted the fridge properly, and it starts again from your figure.",
+            "Pumping runs on its own. Starting it does not end a sleep or a feed — the baby can be asleep while you pump.",
+            "Sleeps under ten minutes are no longer recorded. A mis-tap used to sit in the log dragging the averages down; now it says so when it drops one, with Undo in case it got that wrong.",
+            "Short breast feeds are kept, however brief. Ten minutes of sleep is usually the wrong button; six minutes of feeding is just a feed.",
+            "Longer messages along the bottom of the screen now fit on one line instead of wrapping into a narrow bubble."
+        ]),
+
         new("1.10", new DateOnly(2026, 9, 8),
         [
             "A Trends tab: sleep, breast feeds, bottles and poops drawn as bars, so a week or a month has a shape you can see at a glance.",

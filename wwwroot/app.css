@@ -542,6 +542,7 @@ table.chart td:nth-child(4), table.chart td:nth-child(5), table.chart td:nth-chi
 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
 .btn.danger { color: var(--danger); }
 .btn.block { width: 100%; }
+.btn.small { padding: .3rem .7rem; font-size: .8rem; border-radius: 999px; }
 
 .btn.subtle {
     margin-top: .75rem;
@@ -556,10 +557,18 @@ a.btn { display: inline-block; text-decoration: none; }
 .row-btns { display: flex; gap: .5rem; margin-top: 1rem; }
 .row-btns .btn { flex: 1; }
 
+/* Centred by margin between a left and a right edge, rather than by left:50% and a transform.
+   The transform moves the box after layout but not the space it had to lay out in: anchored at
+   left:50% the toast could only ever be half the screen wide, so anything longer than "Deleted"
+   wrapped to three lines in a bubble occupying the middle of the screen. Nothing noticed while
+   every message was two words. */
 .toast {
     position: fixed;
-    left: 50%;
-    transform: translateX(-50%);
+    left: 1rem;
+    right: 1rem;
+    margin-inline: auto;
+    width: max-content;
+    max-width: calc(100% - 2rem);
     bottom: calc(5.5rem + env(safe-area-inset-bottom));
     z-index: 40;
     background: var(--text);
@@ -569,6 +578,25 @@ a.btn { display: inline-block; text-decoration: none; }
     font-size: .9rem;
     font-weight: 600;
     box-shadow: var(--shadow);
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+}
+
+/* Inside the toast rather than beside it: at 3am the message and the way back out of it want
+   to be one thing to aim at, not two. */
+.toast-undo {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--bg);
+    font: inherit;
+    font-weight: 800;
+    text-decoration: underline;
+    padding: .15rem .1rem;
+    margin: -.15rem 0;
+    cursor: pointer;
+    flex: none;
 }
 
 /* ---------- framework error UI ---------- */
@@ -972,3 +1000,75 @@ body { padding-top: var(--circuit-banner-h, 0px); }
     font-size: .85rem;
     color: var(--text-dim);
 }
+
+/* ---------- pumping ---------- */
+
+/* The headline figure on its own card. Pumped milk is breast milk, so it borrows the breast
+   colour rather than introducing one: the palette already has six kind colours, teal sits too
+   close to the vomit green to be worth adding, and this page shows one measure at a time so
+   nothing here ever has to be told apart by colour. */
+.stock { border-left: 8px solid var(--breast); }
+
+.stock-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+}
+
+.stock-head .k {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    font-size: .8rem;
+    font-weight: 700;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+}
+
+.stock-head .k .ico { font-size: 1.05rem; }
+
+.stock-figure {
+    display: flex;
+    align-items: baseline;
+    gap: .3rem;
+    margin-top: .2rem;
+}
+
+.stock-figure .v { font-size: 2.8rem; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.05; }
+.stock-figure .u { font-size: 1rem; font-weight: 700; color: var(--text-dim); }
+.stock-figure.under .v { color: var(--danger); }
+
+/* How the figure was arrived at. Wraps rather than scrolls: on a narrow phone the three parts
+   stack, which is still readable, whereas a scrolling row hides the arithmetic. */
+.stock-ledger {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .2rem .7rem;
+    margin-top: .35rem;
+    font-size: .78rem;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+}
+
+/* The two figures stand out by weight, not by colour. Colouring them was the first instinct —
+   green in, pink out — but at this size (12.5px) the kind colours come to 3.0:1 and 3.3:1 on a
+   light card against the 4.5 small text needs, and the plus and minus signs carry the direction
+   perfectly well on their own. Reaching for --vomit to mean "added" was a coincidence of hue
+   rather than a meaning, too. */
+.stock-ledger .up,
+.stock-ledger .down { color: var(--text); font-weight: 700; }
+
+.stock-empty, .stock-warn {
+    margin-top: .4rem;
+    font-size: .82rem;
+    color: var(--text-dim);
+    line-height: 1.5;
+}
+
+.stock-warn { color: var(--danger); }
+
+/* Room under the heading of a sheet that explains itself before it asks anything. */
+.sheet-hint { margin-top: -.25rem; margin-bottom: .9rem; }
+

@@ -1,0 +1,143 @@
+@* Editing one pump entry after the fact: the times, the amount, the note.
+   A stock correction is a moment and a figure, so it shows neither an end time nor a duration. *@
+
+<div class="sheet-backdrop" @onclick="() => OnCancel.InvokeAsync()">
+    <div class="sheet" @onclick:stopPropagation="true">
+        <h2>
+            <span class="ico @(IsStockSet ? "" : "breast")"><Icon Name="@(IsStockSet ? "pencil" : "pump")" /></span>
+            @(IsNew ? "Add a session" : IsStockSet ? "Stock correction" : "Edit session")
+        </h2>
+
+        <TimeField Id="pump-start" Label="@(IsStockSet ? "Counted at" : "Started")"
+                   Value="@startText" ValueChanged="v => startText = v" />
+
+        @if (!IsStockSet)
+        {
+            <TimeField Id="pump-end" Label="Stopped"
+                       Value="@endText" ValueChanged="v => endText = v"
+                       ClearLabel="Still pumping" Hint="@DurationHint" />
+        }
+
+        <div class="field">
+            <label for="pump-amount">@(IsStockSet ? "Stock at that moment (ml)" : "Pumped (ml)")</label>
+            <input id="pump-amount" type="number" inputmode="numeric" min="0" max="2000" step="5" @bind="amount" />
+
+            @if (IsStockSet)
+            {
+                <div class="hint-line">
+                    Everything before this stops counting: the stock is worked out forwards from here.
+                </div>
+            }
+        </div>
+
+        <div class="field">
+            <label for="pump-notes">Notes</label>
+            <input id="pump-notes" type="text" maxlength="500" @bind="notes" />
+        </div>
+
+        @if (confirmDelete)
+        {
+            <div class="row-btns">
+                <button type="button" class="btn" @onclick="() => confirmDelete = false">Keep</button>
+                <button type="button" class="btn danger" @onclick="() => OnDelete.InvokeAsync(Entry.Id)">Delete for good</button>
+            </div>
+        }
+        else
+        {
+            <div class="row-btns">
+                @if (!IsNew)
+                {
+                    <button type="button" class="btn danger" @onclick="() => confirmDelete = true">Delete</button>
+                }
+                <button type="button" class="btn" @onclick="() => OnCancel.InvokeAsync()">Cancel</button>
+                <button type="button" class="btn primary" @onclick="Save">Save</button>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public PumpEntry Entry { get; set; } = default!;
+
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    [Parameter] public EventCallback<PumpEntry> OnSave { get; set; }
+
+    [Parameter] public EventCallback<int> OnDelete { get; set; }
+
+    private string startText = "";
+    private string endText = "";
+    private int? amount;
+    private string? notes;
+    private bool confirmDelete;
+    private int loadedId = -1;
+
+    private bool IsNew => Entry.Id == 0;
+
+    private bool IsStockSet => Entry.Kind == PumpEntryKind.StockSet;
+
+    private string DurationHint
+    {
+        get
+        {
+            var start = TimeField.Parse(startText);
+            var end = TimeField.Parse(endText);
+
+            if (start is null)
+            {
+                return "";
+            }
+
+            if (end is null)
+            {
+                return "Still pumping — no stop time yet.";
+            }
+
+            return end <= start
+                ? "The stop time is before the start."
+                : $"That is {Display.Duration(end.Value - start.Value)}.";
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Only when a different entry arrives: re-reading on every render would undo whatever
+        // has just been typed.
+        if (loadedId == Entry.Id)
+        {
+            return;
+        }
+
+        loadedId = Entry.Id;
+        startText = TimeField.ToText(Display.ToLocal(Entry.StartUtc));
+        endText = Entry.EndUtc is null ? "" : TimeField.ToText(Display.ToLocal(Entry.EndUtc.Value));
+        amount = Entry.AmountMl;
+        notes = Entry.Notes;
+        confirmDelete = false;
+    }
+
+    private Task Save()
+    {
+        var start = TimeField.Parse(startText) ?? Display.ToLocal(Entry.StartUtc);
+        var end = IsStockSet ? null : TimeField.Parse(endText);
+
+        // A stop time before the start would give a negative duration and a nonsense total, so
+        // it is dropped rather than saved — the entry goes back to running and can be stopped
+        // again properly.
+        if (end is not null && end <= start)
+        {
+            end = null;
+        }
+
+        return OnSave.InvokeAsync(new PumpEntry
+        {
+            Id = Entry.Id,
+            BabyId = Entry.BabyId,
+            Kind = Entry.Kind,
+            StartUtc = Display.ToUtc(start),
+            EndUtc = end is null ? null : Display.ToUtc(end.Value),
+            AmountMl = amount,
+            Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim()
+        });
+    }
+}
