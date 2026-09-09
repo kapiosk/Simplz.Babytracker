@@ -55,12 +55,22 @@ Over a range of days it draws a bar a day, so a week or a month has a shape — 
 down, sleep stretching out, nappies steady. On **Today** it draws a bar an *hour* instead, which
 tells you when things happened; a single day as one bar would say nothing at all.
 
-Each chart labels its tallest bar, and the figure beside the title is the whole range. There is
-deliberately one measure per chart rather than everything on one — sleep is in hours and bottles
-are in millilitres, and putting two scales on one axis draws something that looks like a fact and
-is not one.
+### Reading the exact figures
 
-For the exact numbers, the report has all of them.
+**Over a week or less, every bar carries its own number** underneath it, so the whole range reads
+at a glance with nothing to tap. The unit is left off there — the chart's own title already says
+whether it is hours, millilitres or a count — and a day's sleep is shortened to *12h20*.
+
+**Over a longer range, or by hour, there is no room for that.** So the tallest bar keeps its
+figure, to give the scale, and **Every day** (or **Every hour**) under the chart opens the full
+list: one line per bucket, with a dash for the ones where nothing happened. It is an ordinary
+expander, so it works even when the connection has dropped.
+
+The figure beside a chart's title is always the whole range.
+
+There is deliberately one measure per chart rather than everything on one — sleep is in hours and
+bottles are in millilitres, and putting two scales on one axis draws something that looks like a
+fact and is not one.
 
 ## Which to show a doctor
 

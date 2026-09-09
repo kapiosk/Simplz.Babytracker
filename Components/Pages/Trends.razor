@@ -30,8 +30,19 @@
           Total="@($"{(int)poops.Sum(p => p.Value)}")" Points="poops" />
 
 <p class="login-note">
-    The tallest bar in each is labelled; the figure beside the title is the whole range.
-    <NavLink href="report">The report</NavLink> has every number and every entry.
+    @if (EveryBarLabelled)
+    {
+        <text>Each bar carries its own figure.</text>
+    }
+    else
+    {
+        <text>
+            Too many bars to label, so the tallest carries a figure and
+            <em>every @bucket</em> under a chart opens the rest.
+        </text>
+    }
+    The number beside a title is the whole range.
+    <NavLink href="report">The report</NavLink> has every entry behind these.
 </p>
 
 @code {
@@ -42,6 +53,13 @@
     private DateTime toDate = DateTime.Now.Date;
 
     private string bucket = "day";
+
+    /// <summary>
+    /// Whether the charts had room to label every bar, so the note underneath says which of the
+    /// two things the reader is actually looking at. All four hold the same buckets, so asking
+    /// one of them answers for all.
+    /// </summary>
+    private bool EveryBarLabelled => sleep.Count is > 0 and <= BarChart.LabelEveryUpTo;
 
     private List<BarChart.Point> sleep = [];
     private List<BarChart.Point> feeds = [];
@@ -132,10 +150,16 @@
             var ml = entries.Where(e => e.Kind == EventKind.BottleFeed).Sum(e => e.AmountMl ?? 0);
             var poopCount = entries.Count(e => e.Kind == EventKind.Poop);
 
-            sleep.Add(new BarChart.Point(name, minutes, Minutes(minutes)));
-            feeds.Add(new BarChart.Point(name, feedCount, feedCount == 1 ? "1 feed" : $"{feedCount} feeds"));
-            bottles.Add(new BarChart.Point(name, ml, $"{ml} ml"));
-            poops.Add(new BarChart.Point(name, poopCount, poopCount == 1 ? "1" : $"{poopCount}"));
+            // The second string is what fits under a bar: the unit dropped, because the chart
+            // above it is already titled. Sleep needs its own shorter form — "12h 20m" is 41px
+            // wide in a 42px column, which is not a margin worth trusting to another browser's
+            // idea of the same font.
+            sleep.Add(new BarChart.Point(name, minutes, Minutes(minutes),
+                minutes >= 1 ? Display.Compact(TimeSpan.FromMinutes(minutes)) : null));
+            feeds.Add(new BarChart.Point(name, feedCount, feedCount == 1 ? "1 feed" : $"{feedCount} feeds",
+                $"{feedCount}"));
+            bottles.Add(new BarChart.Point(name, ml, $"{ml} ml", $"{ml}"));
+            poops.Add(new BarChart.Point(name, poopCount, $"{poopCount}"));
         }
     }
 

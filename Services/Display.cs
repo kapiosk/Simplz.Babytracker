@@ -71,6 +71,13 @@ public static class Display
     public static string Duration(TimeSpan t) =>
         t.TotalHours >= 1 ? $"{(int)t.TotalHours}h {t.Minutes:00}m" : $"{(int)t.TotalMinutes}m";
 
+    /// <summary>
+    /// Shorter still — "12h20", "45m" — for the one place that has no room for the spaces:
+    /// under a bar on the trends page, where a day's sleep has about 42px to fit into.
+    /// </summary>
+    public static string Compact(TimeSpan t) =>
+        t.TotalHours >= 1 ? $"{(int)t.TotalHours}h{t.Minutes:00}" : $"{(int)t.TotalMinutes}m";
+
     public static string Ago(DateTime utc)
     {
         var t = DateTime.UtcNow - utc;
