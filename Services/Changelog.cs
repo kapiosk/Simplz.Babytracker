@@ -17,6 +17,12 @@ public static class Changelog
 
     public static readonly IReadOnlyList<Release> Releases =
     [
+        new("1.13", new DateOnly(2026, 9, 11),
+        [
+            "The pump log now says how long ago each session ended — \"3h 42m ago\" — which is the thing you actually want to know when deciding whether it is time again.",
+            "Entries from today drop the weekday and date, so the line stays short enough to read at a glance."
+        ]),
+
         new("1.12", new DateOnly(2026, 9, 9),
         [
             "Sleeps now say how long they lasted, in Recent on Track and in the report's entries. They were showing only the time they started, which for a sleep is the less useful half.",

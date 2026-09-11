@@ -144,7 +144,7 @@ else if (running is not null)
                     <div class="body">
                         <div class="name">@Headline(entry)</div>
                         <div class="meta">
-                            @Display.ToLocal(entry.StartUtc).ToString("ddd d MMM, HH:mm")@Detail(entry)
+                            @Stamp(entry)@Detail(entry)@Since(entry)
                         </div>
                         @if (!string.IsNullOrWhiteSpace(entry.Notes))
                         {
@@ -434,10 +434,33 @@ else if (running is not null)
         _ => entry.AmountMl is > 0 ? $"Pumped {entry.AmountMl} ml" : "Pumped",
     };
 
+    /// <summary>
+    /// When it happened. The weekday and date are dropped for anything from today, which is most
+    /// of what the log holds — "10:51" beside "3h 10m ago" says it, and "Wed 11 Sept" in front of
+    /// both is the part nobody is reading.
+    /// </summary>
+    private static string Stamp(PumpEntry entry)
+    {
+        var local = Display.ToLocal(entry.StartUtc);
+        return local.Date == DateTime.Now.Date
+            ? local.ToString("HH:mm")
+            : local.ToString("ddd d MMM, HH:mm");
+    }
+
     private static string Detail(PumpEntry entry) =>
         entry.Kind == PumpEntryKind.StockSet || entry.Duration is not { } length
             ? ""
             : $" · {Display.Duration(length)}";
+
+    /// <summary>
+    /// How long ago it finished, which is the question this log is actually asked — whether it
+    /// is time to pump again is a matter of how long it has been, not of what the clock said.
+    ///
+    /// A running session gets nothing: it has not ended, and the timer above is already counting.
+    /// A stock correction dates from when it was made, so it answers the same question.
+    /// </summary>
+    private static string Since(PumpEntry entry) =>
+        entry.IsRunning ? "" : $" · {Display.Ago(entry.EndUtc ?? entry.StartUtc)}";
 
     private static string Sessions(int count) => count == 1 ? "1 session" : $"{count} sessions";
 
