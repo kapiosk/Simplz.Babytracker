@@ -53,8 +53,11 @@ session that never got logged. **Correct** it and it starts again from the truth
 
 ## The log
 
-Every session and every correction is listed underneath, newest first, with how long it took and
-what came out. Tap the pencil to change any of it, or to delete an entry outright.
+Every session and every correction is listed underneath, newest first, with how long it took, what
+came out, and **how long ago it ended** — *3h 42m ago* — which is usually the thing being asked
+when you glance at it. Entries from today show the time only; anything older carries its date too.
+
+Tap the pencil to change any of it, or to delete an entry outright.
 
 **+ Add a session from earlier** is there for the ones you did not log at the time. It opens
 pre-filled as a session that started twenty minutes ago and has just finished.
