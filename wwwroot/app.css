@@ -226,6 +226,82 @@ table.grid th .icon { margin-left: auto; }
 
 .action.running .hint { color: rgba(255, 255, 255, .85); }
 
+.action.bottle.running { background: var(--bottle); border-color: var(--bottle); }
+
+/* Paused drains the colour out of the tile, so a glance says it is not counting without having
+   to read the timer and work out that it is not moving. */
+.action.bottle.running.paused {
+    background: var(--surface-2);
+    border-color: var(--bottle);
+    color: var(--text);
+}
+
+.action.bottle.running.paused .ico { color: var(--bottle); }
+.action.bottle.running.paused .hint { color: var(--text-dim); }
+
+/* The running bottle tile is a div holding two buttons, so pressing one must not squash the
+   whole tile the way pressing a tile-as-button does. */
+.action.bottle.running:active { transform: none; }
+
+.tile-btns {
+    display: flex;
+    gap: .5rem;
+    width: 100%;
+    margin-top: .5rem;
+}
+
+/* Outlined in currentColor so the same rule works on the coloured tile and the drained one. */
+.tile-btn {
+    flex: 1;
+    -webkit-tap-highlight-color: transparent;
+    appearance: none;
+    border: 1.5px solid currentColor;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: .95rem;
+    font-weight: 700;
+    min-height: 44px;
+    padding: .5rem;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: transform .06s ease;
+}
+
+.tile-btn:active { transform: scale(.96); }
+
+/* Both labels are 15.2px bold, so both want 4.5:1, and white on --bottle measured 3.42 — which
+   is what the first pass had for every one of them. The coloured tile is the same blue in either
+   theme, so its buttons carry fixed colours; the drained tile follows the theme, so its buttons
+   use the theme's own pair.
+
+   The hint above them is still white on blue at 3.42. That is the running-tile treatment breast
+   and sleep have always had rather than anything new here, so it is left alone deliberately —
+   changing it is an app-wide decision, not part of this tile. */
+.action.bottle.running .tile-btn {
+    background: rgba(0, 0, 0, .28);
+    border-color: #fff;
+    color: #fff;
+}
+
+.action.bottle.running .tile-btn.strong {
+    background: #fff;
+    border-color: #fff;
+    color: #17151f;
+}
+
+.action.bottle.running.paused .tile-btn {
+    background: transparent;
+    border-color: currentColor;
+    color: inherit;
+}
+
+.action.bottle.running.paused .tile-btn.strong {
+    background: var(--text);
+    border-color: var(--text);
+    color: var(--bg);
+}
+
 .timer {
     font-variant-numeric: tabular-nums;
     font-size: 2.6rem;

@@ -39,6 +39,21 @@ public class BabyEvent
     /// <summary>Only used by bottle feeding: millilitres given.</summary>
     public int? AmountMl { get; set; }
 
+    /// <summary>
+    /// Only used by bottle feeding: when the feed was paused, while it is paused. Null the rest
+    /// of the time, including once it has finished — ending a paused feed folds the last stretch
+    /// into <see cref="PausedSeconds"/> and clears this, so a finished entry never reads as
+    /// paused.
+    /// </summary>
+    public DateTime? PausedAtUtc { get; set; }
+
+    /// <summary>
+    /// Only used by bottle feeding: how long this feed has spent paused, across every pause so
+    /// far, not counting one still running. Seconds rather than a TimeSpan because SQLite has no
+    /// interval type and an integer column is one less thing to get wrong.
+    /// </summary>
+    public int PausedSeconds { get; set; }
+
     [MaxLength(500)]
     public string? Notes { get; set; }
 
@@ -47,7 +62,7 @@ public class BabyEvent
     /// Only one of them runs at a time: a baby cannot be feeding and asleep at once, so starting
     /// either ends the other. An array rather than a pattern so a query can use it too.
     /// </summary>
-    public static readonly EventKind[] LastingKinds = [EventKind.BreastFeed, EventKind.Sleep];
+    public static readonly EventKind[] LastingKinds = [EventKind.BreastFeed, EventKind.Sleep, EventKind.BottleFeed];
 
     public static bool Lasts(EventKind kind) => LastingKinds.Contains(kind);
 
@@ -74,5 +89,43 @@ public class BabyEvent
 
     public bool IsRunning => Lasts(Kind) && EndUtc is null;
 
-    public TimeSpan? Duration => EndUtc is null ? null : EndUtc.Value - StartUtc;
+    /// <summary>Paused right now — only ever true of a bottle feed that is still running.</summary>
+    public bool IsPaused => IsRunning && PausedAtUtc is not null;
+
+    /// <summary>
+    /// Time actually spent feeding as at <paramref name="nowUtc"/>, with every pause taken out.
+    ///
+    /// Pauses come off rather than counting, which is the whole point of being able to pause: a
+    /// bottle set down for twenty minutes while the baby is winded was not a fifty minute feed.
+    /// The wall clock is still there in <see cref="StartUtc"/> and <see cref="EndUtc"/> for
+    /// anyone who wants it.
+    /// </summary>
+    public TimeSpan ElapsedAt(DateTime nowUtc)
+    {
+        var end = EndUtc ?? nowUtc;
+        var paused = TimeSpan.FromSeconds(PausedSeconds);
+
+        if (PausedAtUtc is { } since && end > since)
+        {
+            paused += end - since;
+        }
+
+        var spent = end - StartUtc - paused;
+
+        // Clock changes and hand-edited times can both put these the wrong way round, and a
+        // negative duration further up reads as a corrupted entry rather than a short one.
+        return spent < TimeSpan.Zero ? TimeSpan.Zero : spent;
+    }
+
+    /// <summary>
+    /// Everything spent paused so far, counting a pause still running. The banked figure on its
+    /// own would say "4m" during a pause that had already reached seven.
+    /// </summary>
+    public TimeSpan PausedFor(DateTime nowUtc)
+    {
+        var paused = TimeSpan.FromSeconds(PausedSeconds);
+        return PausedAtUtc is { } since && nowUtc > since ? paused + (nowUtc - since) : paused;
+    }
+
+    public TimeSpan? Duration => EndUtc is null ? null : ElapsedAt(EndUtc.Value);
 }

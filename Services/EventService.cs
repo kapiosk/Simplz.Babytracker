@@ -85,7 +85,12 @@ public class EventService(IDbContextFactory<AppDbContext> factory, MediaService 
     /// at the moment this one begins rather than at some rounded-off time. Enforced here rather
     /// than on the page, so it holds however the session was started.
     /// </summary>
-    public async Task<StartResult> StartAsync(int babyId, EventKind kind, CancellationToken ct = default)
+    /// <param name="init">
+    /// Applied to the new session before it is saved, for the kinds that start with something
+    /// already known about them — a bottle knows what is in it before it knows how long it took.
+    /// </param>
+    public async Task<StartResult> StartAsync(
+        int babyId, EventKind kind, Action<BabyEvent>? init = null, CancellationToken ct = default)
     {
         var running = await GetRunningAsync(babyId, kind, ct);
         if (running is not null)
@@ -139,10 +144,82 @@ public class EventService(IDbContextFactory<AppDbContext> factory, MediaService 
         }
 
         var ev = new BabyEvent { BabyId = babyId, Kind = kind, StartUtc = now };
+        init?.Invoke(ev);
         db.Events.Add(ev);
         await db.SaveChangesAsync(ct);
         NotifyChanged(babyId);
         return new StartResult(ev, ended, endedWasDiscarded);
+    }
+
+    /// <summary>Starts a timed bottle feed, carrying what is already known about it.</summary>
+    public Task<StartResult> StartBottleAsync(
+        int babyId, MilkKind milk, int? amountMl, string? notes, CancellationToken ct = default) =>
+        StartAsync(babyId, EventKind.BottleFeed, ev =>
+        {
+            ev.Milk = milk;
+            ev.AmountMl = amountMl;
+            ev.Notes = notes;
+        }, ct);
+
+    /// <summary>
+    /// Pauses or unpauses a running bottle feed. Unpausing banks the stretch just spent paused,
+    /// so the total survives however many times it is stopped and started.
+    /// </summary>
+    public async Task PauseAsync(int id, bool paused, CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+        var ev = await db.Events.FirstOrDefaultAsync(e => e.Id == id, ct);
+        if (ev is null || ev.EndUtc is not null)
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+
+        if (paused)
+        {
+            // Already paused: leave the existing instant alone rather than restarting the clock,
+            // which would quietly lose whatever has elapsed since — two phones can both tap this.
+            ev.PausedAtUtc ??= now;
+        }
+        else if (ev.PausedAtUtc is { } since)
+        {
+            ev.PausedSeconds += Math.Max(0, (int)(now - since).TotalSeconds);
+            ev.PausedAtUtc = null;
+        }
+
+        await db.SaveChangesAsync(ct);
+        NotifyChanged(ev.BabyId);
+    }
+
+    /// <summary>
+    /// Finishes a bottle feed, recording what was in it and how much. Any pause still open is
+    /// banked first, so a feed ended while paused does not count that last stretch as feeding.
+    /// </summary>
+    public async Task StopBottleAsync(
+        int id, MilkKind milk, int? amountMl, string? notes, CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+        var ev = await db.Events.FirstOrDefaultAsync(e => e.Id == id, ct);
+        if (ev is null || ev.EndUtc is not null)
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+
+        if (ev.PausedAtUtc is { } since)
+        {
+            ev.PausedSeconds += Math.Max(0, (int)(now - since).TotalSeconds);
+            ev.PausedAtUtc = null;
+        }
+
+        ev.EndUtc = now;
+        ev.Milk = milk;
+        ev.AmountMl = amountMl;
+        ev.Notes = notes;
+        await db.SaveChangesAsync(ct);
+        NotifyChanged(ev.BabyId);
     }
 
     /// <summary>What starting this kind would end, so the page can say so before it happens.</summary>
@@ -216,11 +293,18 @@ public class EventService(IDbContextFactory<AppDbContext> factory, MediaService 
 
     public async Task<BabyEvent> LogBottleAsync(int babyId, MilkKind milk, int? amountMl, string? notes = null, CancellationToken ct = default)
     {
+        var now = DateTime.UtcNow;
         var ev = new BabyEvent
         {
             BabyId = babyId,
             Kind = EventKind.BottleFeed,
-            StartUtc = DateTime.UtcNow,
+            StartUtc = now,
+
+            // Ends where it starts. A bottle feed is one of the kinds that can last now, and
+            // "lasting with no end" means running — so a bottle logged in one tap, without the
+            // timer, has to say so explicitly or it would sit on the Track screen counting up
+            // forever and be ended by the next sleep somebody started.
+            EndUtc = now,
             Milk = milk,
             AmountMl = amountMl,
             Notes = notes

@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @implements IDisposable
 @inject EventService Events
+@inject PumpService Pumping
 @inject BabyService Babies
 @inject ILogger<Trends> Logger
 
@@ -25,6 +26,17 @@
 
 <BarChart Label="Bottles" Css="bottle" IconName="bottle" Bucket="@bucket"
           Total="@($"{(int)bottles.Sum(p => p.Value)} ml")" Points="bottles" />
+
+@* Pumping shares the breast colour, because pumped milk is breast milk and because nothing else
+   was available: measured against the four already on this page, every distinct candidate ran
+   into one of them — teals into the bottle blue and into the breast pink for a deuteranope,
+   violets into the sleep indigo, oranges into the poop brown. Four kind colours is what this
+   palette holds. It is harmless here because every chart is titled and iconed and carries one
+   series, so colour has never been what tells them apart. Sitting after Bottles rather than
+   beside Breast feeds keeps the two pink charts from touching, and puts the two measured in
+   millilitres together. *@
+<BarChart Label="Pumped" Css="breast" IconName="pump" Bucket="@bucket"
+          Total="@($"{(int)pumped.Sum(p => p.Value)} ml")" Points="pumped" />
 
 <BarChart Label="Poops" Css="poop" IconName="poop" Bucket="@bucket"
           Total="@($"{(int)poops.Sum(p => p.Value)}")" Points="poops" />
@@ -56,20 +68,25 @@
 
     /// <summary>
     /// Whether the charts had room to label every bar, so the note underneath says which of the
-    /// two things the reader is actually looking at. All four hold the same buckets, so asking
-    /// one of them answers for all.
+    /// two things the reader is actually looking at. Every chart holds the same buckets, so
+    /// asking one of them answers for all.
     /// </summary>
     private bool EveryBarLabelled => sleep.Count is > 0 and <= BarChart.LabelEveryUpTo;
 
     private List<BarChart.Point> sleep = [];
     private List<BarChart.Point> feeds = [];
     private List<BarChart.Point> bottles = [];
+    private List<BarChart.Point> pumped = [];
     private List<BarChart.Point> poops = [];
 
     protected override async Task OnInitializedAsync()
     {
         baby = await Babies.SelectedAsync(AuthState);
         Events.Changed += OnEventsChanged;
+
+        // Pumping is logged on its own page and does not go through EventService at all, so
+        // without this the pumped chart would sit stale while the other four refreshed.
+        Pumping.Changed += OnEventsChanged;
     }
 
     private async Task OnRange(RangePicker.Selection range)
@@ -85,20 +102,23 @@
             return;
         }
 
-        var events = await Events.GetRangeAsync(
-            baby.Id, Display.ToUtc(fromDate), Display.ToUtc(toDate.AddDays(1)));
+        var fromUtc = Display.ToUtc(fromDate);
+        var toUtc = Display.ToUtc(toDate.AddDays(1));
+
+        var events = await Events.GetRangeAsync(baby.Id, fromUtc, toUtc);
+        var pumps = await Pumping.GetRangeAsync(baby.Id, fromUtc, toUtc);
 
         if (fromDate == toDate)
         {
-            BuildByHour(events);
+            BuildByHour(events, pumps);
         }
         else
         {
-            BuildByDay(events);
+            BuildByDay(events, pumps);
         }
     }
 
-    private void BuildByDay(List<BabyEvent> events)
+    private void BuildByDay(List<BabyEvent> events, List<PumpEntry> pumps)
     {
         bucket = "day";
 
@@ -114,10 +134,16 @@
         var byDay = events.GroupBy(e => Display.ToLocal(e.StartUtc).Date)
             .ToDictionary(g => g.Key, g => g.ToList());
 
-        Build(days, day => byDay.TryGetValue(day, out var list) ? list : [], day => Label(day, days.Count));
+        var pumpsByDay = pumps.GroupBy(e => Display.ToLocal(e.StartUtc).Date)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        Build(days,
+            day => byDay.TryGetValue(day, out var list) ? list : [],
+            day => pumpsByDay.TryGetValue(day, out var list) ? list : [],
+            day => Label(day, days.Count));
     }
 
-    private void BuildByHour(List<BabyEvent> events)
+    private void BuildByHour(List<BabyEvent> events, List<PumpEntry> pumps)
     {
         bucket = "hour";
 
@@ -126,14 +152,25 @@
         var byHour = events.GroupBy(e => Display.ToLocal(e.StartUtc).Hour)
             .ToDictionary(g => g.Key, g => g.ToList());
 
-        Build(hours, hour => byHour.TryGetValue(hour, out var list) ? list : [], hour => $"{hour:00}:00");
+        var pumpsByHour = pumps.GroupBy(e => Display.ToLocal(e.StartUtc).Hour)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        Build(hours,
+            hour => byHour.TryGetValue(hour, out var list) ? list : [],
+            hour => pumpsByHour.TryGetValue(hour, out var list) ? list : [],
+            hour => $"{hour:00}:00");
     }
 
-    private void Build<T>(List<T> buckets, Func<T, List<BabyEvent>> entriesIn, Func<T, string> label)
+    private void Build<T>(
+        List<T> buckets,
+        Func<T, List<BabyEvent>> entriesIn,
+        Func<T, List<PumpEntry>> pumpsIn,
+        Func<T, string> label)
     {
         sleep = [];
         feeds = [];
         bottles = [];
+        pumped = [];
         poops = [];
 
         foreach (var slot in buckets)
@@ -150,6 +187,13 @@
             var ml = entries.Where(e => e.Kind == EventKind.BottleFeed).Sum(e => e.AmountMl ?? 0);
             var poopCount = entries.Count(e => e.Kind == EventKind.Poop);
 
+            // Sessions only, and only finished ones. A stock correction also carries millilitres,
+            // but that figure is what the fridge holds rather than what came out of anybody, and
+            // adding it here would inflate the day it was made by the whole stock.
+            var pumpedMl = pumpsIn(slot)
+                .Where(e => e.Kind == PumpEntryKind.Session && e.EndUtc is not null)
+                .Sum(e => e.AmountMl ?? 0);
+
             // The second string is what fits under a bar: the unit dropped, because the chart
             // above it is already titled. Sleep needs its own shorter form — "12h 20m" is 41px
             // wide in a 42px column, which is not a margin worth trusting to another browser's
@@ -159,6 +203,7 @@
             feeds.Add(new BarChart.Point(name, feedCount, feedCount == 1 ? "1 feed" : $"{feedCount} feeds",
                 $"{feedCount}"));
             bottles.Add(new BarChart.Point(name, ml, $"{ml} ml", $"{ml}"));
+            pumped.Add(new BarChart.Point(name, pumpedMl, $"{pumpedMl} ml", $"{pumpedMl}"));
             poops.Add(new BarChart.Point(name, poopCount, $"{poopCount}"));
         }
     }
@@ -197,5 +242,9 @@
         });
     }
 
-    public void Dispose() => Events.Changed -= OnEventsChanged;
+    public void Dispose()
+    {
+        Events.Changed -= OnEventsChanged;
+        Pumping.Changed -= OnEventsChanged;
+    }
 }

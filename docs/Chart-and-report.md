@@ -48,8 +48,8 @@ Only finished sleeps and feeds count towards the totals — one still running ha
 
 ## Trends
 
-The same measures as the report, drawn instead of listed: sleep, breast feeds, bottles and poops,
-one small bar chart each.
+The same measures as the report, drawn instead of listed, one small bar chart each: sleep, breast
+feeds, bottles, millilitres pumped, and poops.
 
 Over a range of days it draws a bar a day, so a week or a month has a shape — feeding settling
 down, sleep stretching out, nappies steady. On **Today** it draws a bar an *hour* instead, which

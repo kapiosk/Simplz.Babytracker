@@ -1,6 +1,11 @@
 <div class="sheet-backdrop" @onclick="() => OnCancel.InvokeAsync()">
     <div class="sheet" @onclick:stopPropagation="true">
-        <h2><span class="ico bottle"><Icon Name="bottle" /></span> Bottle feed</h2>
+        <h2><span class="ico bottle"><Icon Name="bottle" /></span> @(Finishing ? "Finish the bottle" : "Bottle feed")</h2>
+
+        @if (Finishing)
+        {
+            <div class="hint-line sheet-hint">@FinishHint</div>
+        }
 
         <div class="field">
             <label>What's in the bottle?</label>
@@ -31,20 +36,60 @@
 
         <div class="row-btns">
             <button type="button" class="btn" @onclick="() => OnCancel.InvokeAsync()">Cancel</button>
-            <button type="button" class="btn primary" @onclick="Save">Save</button>
+            <button type="button" class="btn primary" @onclick="Save">@(Finishing ? "Done" : "Save")</button>
         </div>
+
+        @if (!Finishing)
+        {
+            @* The one-tap log above stays the quick way, because most of the time you are
+               writing down a bottle rather than starting one — often one already half drunk.
+               Timing it is the deliberate choice, so it sits below as its own thing. *@
+            <button type="button" class="btn block subtle" @onclick="Start">
+                Start timing instead
+            </button>
+        }
     </div>
 </div>
 
 @code {
     [Parameter] public EventCallback OnCancel { get; set; }
+
+    /// <summary>Log it now, as a moment — or, when finishing, record what the timed feed was.</summary>
     [Parameter] public EventCallback<BottleEntry> OnSave { get; set; }
+
+    /// <summary>Begin a timed feed with whatever is already known about it.</summary>
+    [Parameter] public EventCallback<BottleEntry> OnStart { get; set; }
+
+    /// <summary>
+    /// True when this is the sheet shown after stopping the timer, which only confirms what was
+    /// in the bottle — there is nothing left to start.
+    /// </summary>
+    [Parameter] public bool Finishing { get; set; }
+
+    /// <summary>How long the feed took, said back to whoever is filling the amount in.</summary>
+    [Parameter] public string? FinishHint { get; set; }
+
+    [Parameter] public MilkKind InitialMilk { get; set; } = MilkKind.BreastMilk;
+    [Parameter] public int? InitialAmount { get; set; }
+    [Parameter] public string? InitialNotes { get; set; }
 
     private MilkKind milk = MilkKind.BreastMilk;
     private int? amount;
     private string? notes;
 
-    private Task Save() => OnSave.InvokeAsync(new BottleEntry(milk, amount, string.IsNullOrWhiteSpace(notes) ? null : notes.Trim()));
+    protected override void OnInitialized()
+    {
+        milk = InitialMilk;
+        amount = InitialAmount;
+        notes = InitialNotes;
+    }
+
+    private Task Save() => OnSave.InvokeAsync(Entry());
+
+    private Task Start() => OnStart.InvokeAsync(Entry());
+
+    private BottleEntry Entry() =>
+        new(milk, amount, string.IsNullOrWhiteSpace(notes) ? null : notes.Trim());
 
     public record BottleEntry(MilkKind Milk, int? AmountMl, string? Notes);
 }
