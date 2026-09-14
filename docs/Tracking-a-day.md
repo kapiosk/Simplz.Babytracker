@@ -28,12 +28,31 @@ yourself, or add from earlier, is kept whatever length you give it.
 Both lists — **Recent** on Track and the entries on the report — show how long each one lasted
 beside its time, or *still asleep* / *still feeding* while it is running.
 
-## The four that are moments
+## Bottles, either way
 
-**Bottle**, **Poop**, **Urine** and **Vomit** are logged at the time you tap them.
+**Bottle** opens a sheet: breast milk or formula, an amount in millilitres from the presets or
+typed in, and a note if you want one. **Save** writes it down at the time you tapped, which is the
+quick way and still the usual one — most of the time you are recording a bottle rather than
+starting one, often one already half drunk.
 
-Bottle opens a sheet first: breast milk or formula, an amount in millilitres from the presets or
-typed in, and a note if you want one. The rest are a single tap and nothing else.
+Underneath is **Start timing instead**, for when you want the clock. The tile becomes a running
+timer with two buttons:
+
+- **Pause** for winding, a nappy, or a baby who has stopped. Paused time does not count towards
+  the feed, so twenty minutes of feeding spread over three quarters of an hour is recorded as
+  twenty. The tile drains of colour while it is paused, so a glance tells you it is not counting.
+- **Finish** asks how much went in, with the length already filled in beside the question.
+
+A timed bottle is one of the things that cannot happen at once with the others: starting one ends
+a running sleep or breast feed, and starting either of those ends the bottle.
+
+In the lists a bottle shows both figures — *120 ml · 20m*. One saved in a single tap has no
+length, so it just shows the amount.
+
+## The three that are moments
+
+**Poop**, **Urine** and **Vomit** are logged at the time you tap them: a single tap and nothing
+else.
 
 ## Nothing has to be logged as it happens
 

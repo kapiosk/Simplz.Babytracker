@@ -17,6 +17,15 @@ public static class Changelog
 
     public static readonly IReadOnlyList<Release> Releases =
     [
+        new("1.14", new DateOnly(2026, 9, 14),
+        [
+            "A bottle can be timed now. The sheet still saves in one tap the way it always did — most of the time you are writing a bottle down, not starting one — but there is now \"Start timing instead\" underneath for when you want the clock.",
+            "A timed bottle can be paused, for winding and the rest of it. Paused time does not count towards the feed, so twenty minutes of feeding over three quarters of an hour is recorded as twenty.",
+            "Starting a bottle ends a running sleep or breast feed, and starting either of those ends a bottle — a baby can only be doing one of the three.",
+            "The lists show a bottle's length beside its amount: \"120 ml · 20m\".",
+            "Trends has a fifth chart: millilitres pumped per day, or per hour on Today."
+        ]),
+
         new("1.13", new DateOnly(2026, 9, 11),
         [
             "The pump log now says how long ago each session ended — \"3h 42m ago\" — which is the thing you actually want to know when deciding whether it is time again.",

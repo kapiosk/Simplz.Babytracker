@@ -62,6 +62,12 @@ Tap the pencil to change any of it, or to delete an entry outright.
 **+ Add a session from earlier** is there for the ones you did not log at the time. It opens
 pre-filled as a session that started twenty minutes ago and has just finished.
 
+## On Trends
+
+Millilitres pumped is the fourth chart on [Trends](Chart-and-report), a bar a day over a range or
+a bar an hour on Today. Only finished sessions count, and a stock correction does not — that
+figure is what the fridge holds rather than what came out of anybody.
+
 ## The read-only password
 
 The doctor password sees the stock, the arithmetic behind it and the whole log, and can change

@@ -225,6 +225,21 @@ public sealed class PumpService(IDbContextFactory<AppDbContext> factory, ILogger
             sessions.Aggregate(TimeSpan.Zero, (total, e) => total + (e.Duration ?? TimeSpan.Zero)));
     }
 
+    /// <summary>
+    /// Every entry that started in the window, for the pages that bucket them up themselves.
+    /// Corrections come back too — a caller drawing millilitres pumped wants to ignore them, but
+    /// that is its decision to make rather than one to bake in here.
+    /// </summary>
+    public async Task<List<PumpEntry>> GetRangeAsync(
+        int babyId, DateTime fromUtc, DateTime toUtc, CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+        return await db.PumpEntries
+            .Where(e => e.BabyId == babyId && e.StartUtc >= fromUtc && e.StartUtc < toUtc)
+            .OrderByDescending(e => e.StartUtc)
+            .ToListAsync(ct);
+    }
+
     public async Task<List<PumpEntry>> GetRecentAsync(int babyId, int count = 20, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
