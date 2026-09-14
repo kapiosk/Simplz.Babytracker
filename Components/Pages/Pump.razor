@@ -82,12 +82,29 @@
     <div class="actions">
         @if (running is not null)
         {
-            <button class="action breast running wide" @onclick="Stop">
+            @* A div rather than a button: it holds two controls, the same as the feed and bottle
+               tiles on Track. *@
+            <div class="action breast running wide @(running.IsPaused ? "paused" : "")">
                 <span class="ico"><Icon Name="pump" /></span>
-                <span class="timer">@Display.Clock(DateTime.UtcNow - running.StartUtc)</span>
-                <span>Tap to stop</span>
-                <span class="hint">started @Display.ToLocal(running.StartUtc).ToString("HH:mm")</span>
-            </button>
+                <span class="timer">@Display.Clock(running.ElapsedAt(DateTime.UtcNow))</span>
+                <span class="hint">
+                    @if (running.IsPaused)
+                    {
+                        <text>paused · @Display.Duration(running.PausedFor(DateTime.UtcNow)) not counted</text>
+                    }
+                    else
+                    {
+                        <text>started @Display.ToLocal(running.StartUtc).ToString("HH:mm")</text>
+                    }
+                </span>
+
+                <div class="tile-btns">
+                    <button type="button" class="tile-btn" @onclick="TogglePause">
+                        @(running.IsPaused ? "Resume" : "Pause")
+                    </button>
+                    <button type="button" class="tile-btn strong" @onclick="Stop">Finish</button>
+                </div>
+            </div>
         }
         else
         {
@@ -104,7 +121,7 @@ else if (running is not null)
     <div class="card running-note">
         <span class="ico breast"><Icon Name="pump" /></span>
         Pumping since @Display.ToLocal(running.StartUtc).ToString("HH:mm")
-        · @Display.Clock(DateTime.UtcNow - running.StartUtc)
+        · @Display.Clock(running.ElapsedAt(DateTime.UtcNow))@(running.IsPaused ? " · paused" : "")
     </div>
 }
 
@@ -268,7 +285,7 @@ else if (running is not null)
         {
             while (!ct.IsCancellationRequested)
             {
-                var interval = running is not null || toastUntil > DateTime.UtcNow
+                var interval = running is { IsPaused: false } || toastUntil > DateTime.UtcNow
                     ? TimeSpan.FromSeconds(1)
                     : TimeSpan.FromSeconds(30);
 
@@ -324,6 +341,18 @@ else if (running is not null)
         lastHint = last is null ? "no session yet" : $"last {Display.Ago(last.EndUtc ?? last.StartUtc)}";
     }
 
+    private async Task TogglePause()
+    {
+        if (!canEdit || running is null)
+        {
+            return;
+        }
+
+        var pausing = !running.IsPaused;
+        await Pumping.PauseAsync(running.Id, pausing);
+        Toast(pausing ? "Paused" : "Pumping again");
+    }
+
     private async Task Start()
     {
         if (!canEdit || baby is null)
@@ -345,7 +374,7 @@ else if (running is not null)
         // Asked for before the session is closed, so cancelling the sheet leaves it running
         // rather than saving a session nobody finished answering for.
         stopping = running;
-        stoppedAfter = DateTime.UtcNow - running.StartUtc;
+        stoppedAfter = running.ElapsedAt(DateTime.UtcNow);
     }
 
     private async Task SaveStop(AmountDialog.Entry entry)
@@ -430,6 +459,7 @@ else if (running is not null)
     private static string Headline(PumpEntry entry) => entry.Kind switch
     {
         PumpEntryKind.StockSet => $"Stock set to {entry.AmountMl ?? 0} ml",
+        _ when entry.IsPaused => "Paused",
         _ when entry.IsRunning => "Pumping now",
         _ => entry.AmountMl is > 0 ? $"Pumped {entry.AmountMl} ml" : "Pumped",
     };

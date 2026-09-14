@@ -17,6 +17,14 @@ public static class Changelog
 
     public static readonly IReadOnlyList<Release> Releases =
     [
+        new("1.15", new DateOnly(2026, 9, 15),
+        [
+            "Breast feeds and pumping sessions can be paused now, the way a bottle already could. Paused time does not count, so a feed paused for ten of its forty minutes is recorded as thirty.",
+            "A running breast feed has Pause and Finish buttons instead of tapping the tile to stop — the same shape as a timed bottle and a pump session.",
+            "Sleep is deliberately left alone: a baby who wakes and resettles is one sleep or two, not a paused one, so it is still a single tap to wake.",
+            "Fixed: finishing anything while it was paused reported the wall-clock time rather than the feeding time."
+        ]),
+
         new("1.14", new DateOnly(2026, 9, 14),
         [
             "A bottle can be timed now. The sheet still saves in one tap the way it always did — most of the time you are writing a bottle down, not starting one — but there is now \"Start timing instead\" underneath for when you want the clock.",

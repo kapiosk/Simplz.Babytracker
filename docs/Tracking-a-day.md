@@ -5,8 +5,18 @@ Everything here is on **Track**, the first screen.
 ## The two that run
 
 **Start breast feed** and **Start sleep** are stretches of time. Tap once to start and the button
-becomes a running timer; tap it again to stop. The timer keeps going if you lock the phone, close
-the app, or pick it up on a different phone — it lives on the server, not in the page.
+becomes a running timer. The timer keeps going if you lock the phone, close the app, or pick it up
+on a different phone — it lives on the server, not in the page.
+
+A running **breast feed** carries two buttons, the same as a timed bottle:
+
+- **Pause** for whatever interrupts it. Paused time does not count towards the feed, so a feed
+  paused for ten of its forty minutes is recorded as thirty. The tile drains of colour while it is
+  paused, so a glance says it is not counting.
+- **Finish** stops it and writes it down.
+
+A running **sleep** is still a single tap to wake — there is no pausing it. A baby who wakes and
+resettles is either one sleep or two, not a paused one.
 
 A baby cannot be feeding and asleep at the same time, so **starting one ends the other**, at the
 moment the new one begins. The message at the bottom of the screen says when that has happened.
