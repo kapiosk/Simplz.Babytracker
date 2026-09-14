@@ -229,18 +229,23 @@ table.grid th .icon { margin-left: auto; }
 .action.bottle.running { background: var(--bottle); border-color: var(--bottle); }
 
 /* Paused drains the colour out of the tile, so a glance says it is not counting without having
-   to read the timer and work out that it is not moving. */
-.action.bottle.running.paused {
+   to read the timer and work out that it is not moving. Breast feeds and bottles can be paused;
+   sleep cannot, so its running tile is still a plain tap-to-wake button. */
+.action.running.paused {
     background: var(--surface-2);
-    border-color: var(--bottle);
     color: var(--text);
 }
 
+.action.breast.running.paused { border-color: var(--breast); }
+.action.bottle.running.paused { border-color: var(--bottle); }
+.action.breast.running.paused .ico { color: var(--breast); }
 .action.bottle.running.paused .ico { color: var(--bottle); }
-.action.bottle.running.paused .hint { color: var(--text-dim); }
+.action.running.paused .hint { color: var(--text-dim); }
 
-/* The running bottle tile is a div holding two buttons, so pressing one must not squash the
-   whole tile the way pressing a tile-as-button does. */
+/* These two running tiles are divs holding buttons, so pressing one must not squash the whole
+   tile the way pressing a tile-as-button does. Named rather than matched with :has(), so there
+   is no question about which browsers agree. */
+.action.breast.running:active,
 .action.bottle.running:active { transform: none; }
 
 .tile-btns {
@@ -278,25 +283,25 @@ table.grid th .icon { margin-left: auto; }
    The hint above them is still white on blue at 3.42. That is the running-tile treatment breast
    and sleep have always had rather than anything new here, so it is left alone deliberately —
    changing it is an app-wide decision, not part of this tile. */
-.action.bottle.running .tile-btn {
+.action.running .tile-btn {
     background: rgba(0, 0, 0, .28);
     border-color: #fff;
     color: #fff;
 }
 
-.action.bottle.running .tile-btn.strong {
+.action.running .tile-btn.strong {
     background: #fff;
     border-color: #fff;
     color: #17151f;
 }
 
-.action.bottle.running.paused .tile-btn {
+.action.running.paused .tile-btn {
     background: transparent;
     border-color: currentColor;
     color: inherit;
 }
 
-.action.bottle.running.paused .tile-btn.strong {
+.action.running.paused .tile-btn.strong {
     background: var(--text);
     border-color: var(--text);
     color: var(--bg);

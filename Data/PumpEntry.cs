@@ -46,10 +46,53 @@ public class PumpEntry
     /// <summary>Millilitres — pumped, for a session; the whole stock, for a correction.</summary>
     public int? AmountMl { get; set; }
 
+    /// <summary>
+    /// Only for a session: when it was paused, while it is paused. Cleared when it stops, the
+    /// last stretch going into <see cref="PausedSeconds"/>, so a finished session never reads
+    /// as paused. Mirrors the pair on <see cref="BabyEvent"/>, which does the same job there.
+    /// </summary>
+    public DateTime? PausedAtUtc { get; set; }
+
+    /// <summary>
+    /// Only for a session: how long it has spent paused across every pause so far, not counting
+    /// one still running. Seconds, because SQLite has no interval type.
+    /// </summary>
+    public int PausedSeconds { get; set; }
+
     [MaxLength(500)]
     public string? Notes { get; set; }
 
     public bool IsRunning => Kind == PumpEntryKind.Session && EndUtc is null;
 
-    public TimeSpan? Duration => EndUtc is null ? null : EndUtc.Value - StartUtc;
+    public bool IsPaused => IsRunning && PausedAtUtc is not null;
+
+    /// <summary>
+    /// Time actually spent pumping as at <paramref name="nowUtc"/>, with pauses taken out. The
+    /// wall clock stays in <see cref="StartUtc"/> and <see cref="EndUtc"/> for anyone who wants it.
+    /// </summary>
+    public TimeSpan ElapsedAt(DateTime nowUtc)
+    {
+        var end = EndUtc ?? nowUtc;
+        var paused = TimeSpan.FromSeconds(PausedSeconds);
+
+        if (PausedAtUtc is { } since && end > since)
+        {
+            paused += end - since;
+        }
+
+        var spent = end - StartUtc - paused;
+
+        // Hand-edited times can put these the wrong way round, and a negative duration further
+        // up reads as a corrupted entry rather than a short one.
+        return spent < TimeSpan.Zero ? TimeSpan.Zero : spent;
+    }
+
+    /// <summary>Everything spent paused so far, counting a pause still running.</summary>
+    public TimeSpan PausedFor(DateTime nowUtc)
+    {
+        var paused = TimeSpan.FromSeconds(PausedSeconds);
+        return PausedAtUtc is { } since && nowUtc > since ? paused + (nowUtc - since) : paused;
+    }
+
+    public TimeSpan? Duration => EndUtc is null ? null : ElapsedAt(EndUtc.Value);
 }

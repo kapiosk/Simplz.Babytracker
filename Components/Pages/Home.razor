@@ -15,12 +15,29 @@
     <div class="actions">
         @if (runningFeed is not null)
         {
-            <button class="action breast running wide" @onclick="() => Stop(runningFeed)">
+            @* A div rather than a button, for the same reason the bottle tile is one: it holds
+               two controls, and a button inside a button is not a thing. *@
+            <div class="action breast running wide @(runningFeed.IsPaused ? "paused" : "")">
                 <span class="ico"><Icon Name="breast" /></span>
-                <span class="timer">@Display.Clock(DateTime.UtcNow - runningFeed.StartUtc)</span>
-                <span>Tap to stop</span>
-                <span class="hint">started @Display.ToLocal(runningFeed.StartUtc).ToString("HH:mm")</span>
-            </button>
+                <span class="timer">@Display.Clock(runningFeed.ElapsedAt(DateTime.UtcNow))</span>
+                <span class="hint">
+                    @if (runningFeed.IsPaused)
+                    {
+                        <text>paused · @Display.Duration(runningFeed.PausedFor(DateTime.UtcNow)) not counted</text>
+                    }
+                    else
+                    {
+                        <text>started @Display.ToLocal(runningFeed.StartUtc).ToString("HH:mm")</text>
+                    }
+                </span>
+
+                <div class="tile-btns">
+                    <button type="button" class="tile-btn" @onclick="() => TogglePause(runningFeed)">
+                        @(runningFeed.IsPaused ? "Resume" : "Pause")
+                    </button>
+                    <button type="button" class="tile-btn strong" @onclick="() => Stop(runningFeed)">Finish</button>
+                </div>
+            </div>
         }
         else
         {
@@ -68,7 +85,7 @@
                 </span>
 
                 <div class="tile-btns">
-                    <button type="button" class="tile-btn" @onclick="ToggleBottlePause">
+                    <button type="button" class="tile-btn" @onclick="() => TogglePause(runningBottle)">
                         @(runningBottle.IsPaused ? "Resume" : "Pause")
                     </button>
                     <button type="button" class="tile-btn strong" @onclick="FinishBottle">Finish</button>
@@ -122,7 +139,7 @@ else
         <div class="card running-note" @key="session.Id">
             <span class="ico @Display.Css(session.Kind)"><Icon Name="@Icon.For(session.Kind)" /></span>
             @Display.Label(session) running since @Display.ToLocal(session.StartUtc).ToString("HH:mm")
-            · @Display.Clock(DateTime.UtcNow - session.StartUtc)
+            · @Display.Clock(session.ElapsedAt(DateTime.UtcNow))@(session.IsPaused ? " · paused" : "")
         </div>
     }
 }
@@ -235,7 +252,7 @@ else
             {
                 // A paused bottle is not counting, so it needs no second hand — the slow tick
                 // still keeps the "x ago" hints honest.
-                var ticking = runningFeed is not null
+                var ticking = runningFeed is { IsPaused: false }
                               || runningSleep is not null
                               || runningBottle is { IsPaused: false };
 
@@ -425,15 +442,15 @@ else
             : $"Bottle started · {what} ended");
     }
 
-    private async Task ToggleBottlePause()
+    private async Task TogglePause(BabyEvent? session)
     {
-        if (runningBottle is not { } bottle || !canEdit)
+        if (session is null || !canEdit)
         {
             return;
         }
 
-        var pausing = !bottle.IsPaused;
-        await Events.PauseAsync(bottle.Id, pausing);
+        var pausing = !session.IsPaused;
+        await Events.PauseAsync(session.Id, pausing);
         Toast(pausing ? "Paused" : "Feeding again");
     }
 

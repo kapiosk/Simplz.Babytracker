@@ -249,7 +249,11 @@ public class EventService(IDbContextFactory<AppDbContext> factory, MediaService 
         }
 
         var now = DateTime.UtcNow;
-        var elapsed = now - ev.StartUtc;
+
+        // Feeding time, not wall-clock time: a feed paused for twenty minutes did not last
+        // twenty minutes longer. This used to subtract the two instants directly, which was
+        // right only for as long as nothing going through here could be paused.
+        var elapsed = ev.ElapsedAt(now);
 
         // A photo hanging off it is somebody having gone to the trouble, so whatever the clock
         // says the entry was meant. Barely reachable — it needs the editor opened mid-sleep and
@@ -265,6 +269,7 @@ public class EventService(IDbContextFactory<AppDbContext> factory, MediaService 
                 Kind = ev.Kind,
                 StartUtc = ev.StartUtc,
                 EndUtc = now,
+                PausedSeconds = (int)ev.PausedFor(now).TotalSeconds,
                 Notes = ev.Notes
             };
 
@@ -272,6 +277,16 @@ public class EventService(IDbContextFactory<AppDbContext> factory, MediaService 
             await db.SaveChangesAsync(ct);
             NotifyChanged(discarded.BabyId);
             return new StopResult(StopOutcome.Discarded, elapsed, discarded);
+        }
+
+        // Bank a pause still open, so a finished entry never reads as paused — same as the
+        // bottle path does. The duration would come out right either way, because ElapsedAt
+        // folds an open pause in, but leaving the instant set on a finished row is the sort of
+        // state that only stays harmless until somebody writes the next query against it.
+        if (ev.PausedAtUtc is { } since)
+        {
+            ev.PausedSeconds += Math.Max(0, (int)(now - since).TotalSeconds);
+            ev.PausedAtUtc = null;
         }
 
         ev.EndUtc = now;

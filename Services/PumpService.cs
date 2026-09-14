@@ -116,9 +116,50 @@ public sealed class PumpService(IDbContextFactory<AppDbContext> factory, ILogger
             return;
         }
 
-        entry.EndUtc = DateTime.UtcNow;
+        var now = DateTime.UtcNow;
+
+        // A pause still open is banked first, so stopping while paused does not count that last
+        // stretch as pumping, and so a finished session never reads as paused.
+        if (entry.PausedAtUtc is { } since)
+        {
+            entry.PausedSeconds += Math.Max(0, (int)(now - since).TotalSeconds);
+            entry.PausedAtUtc = null;
+        }
+
+        entry.EndUtc = now;
         entry.AmountMl = amountMl;
         entry.Notes = Clean(notes);
+        await db.SaveChangesAsync(ct);
+        NotifyChanged(entry.BabyId);
+    }
+
+    /// <summary>
+    /// Pauses or unpauses a running session. Unpausing banks the stretch just spent paused, so
+    /// the total survives however many times it is stopped and started.
+    /// </summary>
+    public async Task PauseAsync(int id, bool paused, CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+        var entry = await db.PumpEntries.FirstOrDefaultAsync(e => e.Id == id, ct);
+        if (entry is null || entry.EndUtc is not null)
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+
+        if (paused)
+        {
+            // Already paused: leave the instant alone rather than restarting the clock, which
+            // would quietly lose whatever has elapsed since. Two phones can both tap this.
+            entry.PausedAtUtc ??= now;
+        }
+        else if (entry.PausedAtUtc is { } since)
+        {
+            entry.PausedSeconds += Math.Max(0, (int)(now - since).TotalSeconds);
+            entry.PausedAtUtc = null;
+        }
+
         await db.SaveChangesAsync(ct);
         NotifyChanged(entry.BabyId);
     }

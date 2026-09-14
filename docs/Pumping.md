@@ -6,11 +6,15 @@ of the baby's log, the chart, the report and the trends.
 
 ## A session
 
-**Start pumping** works the way the feed and sleep timers do: tap once to start, tap again to stop.
-The timer lives on the server, so locking the phone or picking up the other one makes no difference
-to it.
+**Start pumping** works the way the feed timer does: tap once to start, then Pause and Finish as
+you need them. The timer lives on the server, so locking the phone or picking up the other one
+makes no difference to it.
 
-When you stop, it asks how much came out. Tap a preset or type a figure. If you do not know yet —
+A running session carries **Pause** and **Finish**. Pause is for whatever interrupts it, and
+paused time does not count towards the session, so twenty-five minutes with five of them paused is
+recorded as twenty. The tile drains of colour while it is paused.
+
+When you finish, it asks how much came out. Tap a preset or type a figure. If you do not know yet —
 the bottle is still on the counter, or somebody needs a hand — tap **Skip** and fill it in later
 from the log; the session is still recorded, just without an amount.
 
