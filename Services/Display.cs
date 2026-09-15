@@ -23,6 +23,22 @@ public static class Display
         return TimeZoneInfo.ConvertTimeToUtc(wallClock, TimeZoneInfo.Local);
     }
 
+    /// <summary>
+    /// The moment an entry is shown against.
+    ///
+    /// Everything is shown by when it started, except a bottle, which is shown by when it
+    /// finished. The start of a bottle is roughly when somebody picked it up; the end is when
+    /// the baby stopped drinking, which is the moment worth reading off the log. A bottle
+    /// logged in one tap ends where it starts, so nothing changes for those.
+    ///
+    /// Display only. Grouping and ordering stay on <see cref="BabyEvent.StartUtc"/> — the day
+    /// an entry belongs to, the order of the log, the buckets on the trends. The one visible
+    /// consequence is a timed bottle running through midnight, which is counted under the day
+    /// it began and shown with the time it ended.
+    /// </summary>
+    public static DateTime Stamp(BabyEvent e) =>
+        e.Kind == EventKind.BottleFeed && e.EndUtc is { } end ? end : e.StartUtc;
+
     public static string Label(BabyEvent e) => e.Kind switch
     {
         EventKind.BreastFeed => "Breast feed",

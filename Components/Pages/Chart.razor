@@ -62,7 +62,7 @@
                         <td class="bottle-cell">
                             @foreach (var bottle in row.Bottles)
                             {
-                                var at = Display.ToLocal(bottle.StartUtc).ToString("HH:mm");
+                                var at = Display.ToLocal(Display.Stamp(bottle)).ToString("HH:mm");
 
                                 if (canEdit)
                                 {

@@ -96,8 +96,10 @@ else
 
     private string Meta(BabyEvent e)
     {
-        var local = Display.ToLocal(e.StartUtc);
-        var when = ShowDate ? local.ToString("ddd d MMM, HH:mm") : $"{local:HH:mm} · {Display.Ago(e.StartUtc)}";
+        // A bottle is shown by when it finished rather than when it began — see Display.Stamp.
+        var stamp = Display.Stamp(e);
+        var local = Display.ToLocal(stamp);
+        var when = ShowDate ? local.ToString("ddd d MMM, HH:mm") : $"{local:HH:mm} · {Display.Ago(stamp)}";
 
         var extra = e.Kind switch
         {

@@ -59,6 +59,10 @@ a running sleep or breast feed, and starting either of those ends the bottle.
 In the lists a bottle shows both figures — *120 ml · 20m*. One saved in a single tap has no
 length, so it just shows the amount.
 
+A bottle is listed against the time it **finished**, not the time it started — when the baby
+stopped drinking is the moment you are usually looking for. Everything else is listed by when it
+began. A bottle saved in one tap ends where it starts, so there is no difference for those.
+
 ## The three that are moments
 
 **Poop**, **Urine** and **Vomit** are logged at the time you tap them: a single tap and nothing

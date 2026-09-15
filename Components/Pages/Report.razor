@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @implements IDisposable
 @inject EventService Events
+@inject PumpService Pumping
 @inject BabyService Babies
 @inject ILogger<Report> Logger
 
@@ -28,7 +29,10 @@
     <div class="stat bottle">
         <div class="k"><Icon Name="bottle" /> Bottles</div>
         <div class="v">@bottleCount</div>
-        <div class="x">@bottleMl ml · @formulaCount formula / @breastMilkCount breast milk</div>
+        <div class="x">
+            @bottleMl ml@(bottleTotal > TimeSpan.Zero ? $" · {Display.Duration(bottleTotal)} total" : "")
+        </div>
+        <div class="x">@formulaCount formula / @breastMilkCount breast milk</div>
     </div>
     <div class="stat poop">
         <div class="k"><Icon Name="poop" /> Poops</div>
@@ -45,6 +49,20 @@
         <div class="v">@Count(EventKind.Vomit)</div>
         <div class="x">@PerDay(Count(EventKind.Vomit))</div>
     </div>
+
+    @* Last of the tiles on purpose: everything above it is about the baby, and this one is not.
+       It borrows the breast colour, as pumping does everywhere else in the app. *@
+    <div class="stat breast">
+        <div class="k"><Icon Name="pump" /> Pumping</div>
+        @* The unit rides with the figure, the way Sleep shows "10h 20m" — splitting it left the
+           tile reading "330" over "ml · 2h 28m total", which parses as neither one thing nor two. *@
+        <div class="v">@pumpedMl ml</div>
+        <div class="x">
+            @(pumpCount > 0
+                ? $"{pumpCount} {(pumpCount == 1 ? "session" : "sessions")} · {Display.Duration(pumpTotal)} total"
+                : "no completed sessions")
+        </div>
+    </div>
 </div>
 
 @if (days.Count > 1)
@@ -59,6 +77,7 @@
                     <th>Time</th>
                     <th><Icon Name="bottle" /></th>
                     <th>ml</th>
+                    <th>Time</th>
                     <th><Icon Name="poop" /></th>
                     <th><Icon Name="urine" /></th>
                     <th><Icon Name="vomit" /></th>
@@ -73,6 +92,7 @@
                         <td>@(day.BreastTime > TimeSpan.Zero ? Display.Duration(day.BreastTime) : "–")</td>
                         <td>@Num(day.Bottle)</td>
                         <td>@(day.Ml > 0 ? day.Ml.ToString() : "–")</td>
+                        <td>@(day.BottleTime > TimeSpan.Zero ? Display.Duration(day.BottleTime) : "–")</td>
                         <td>@Num(day.Poop)</td>
                         <td>@Num(day.Urine)</td>
                         <td>@Num(day.Vomit)</td>
@@ -129,6 +149,10 @@
     private TimeSpan sleepLongest;
     private int bottleCount;
     private int bottleMl;
+    private TimeSpan bottleTotal;
+    private int pumpCount;
+    private int pumpedMl;
+    private TimeSpan pumpTotal;
     private int formulaCount;
     private int breastMilkCount;
 
@@ -137,6 +161,10 @@
         canEdit = await Access.CanEditAsync(AuthState);
         baby = await Babies.SelectedAsync(AuthState);
         Events.Changed += OnEventsChanged;
+
+        // Pumping never goes through EventService, so without this the pumping tile would sit
+        // stale while every other figure on the page refreshed.
+        Pumping.Changed += OnEventsChanged;
     }
 
     private async Task OnRange(RangePicker.Selection range)
@@ -152,7 +180,10 @@
             return;
         }
 
-        events = await Events.GetRangeAsync(baby.Id, Display.ToUtc(fromDate), Display.ToUtc(toDate.AddDays(1)));
+        var fromUtc = Display.ToUtc(fromDate);
+        var toUtc = Display.ToUtc(toDate.AddDays(1));
+
+        events = await Events.GetRangeAsync(baby.Id, fromUtc, toUtc);
 
         listed = events.Take(MaxListed).ToList();
 
@@ -173,8 +204,21 @@
         var bottles = events.Where(e => e.Kind == EventKind.BottleFeed).ToList();
         bottleCount = bottles.Count;
         bottleMl = bottles.Sum(e => e.AmountMl ?? 0);
+
+        // Only the timed ones have a length. A bottle logged in one tap ends where it starts,
+        // so it contributes nothing here rather than a zero that drags an average down.
+        bottleTotal = bottles.Aggregate(TimeSpan.Zero, (sum, e) => sum + (e.Duration ?? TimeSpan.Zero));
         formulaCount = bottles.Count(e => e.Milk == MilkKind.Formula);
         breastMilkCount = bottles.Count(e => e.Milk == MilkKind.BreastMilk);
+
+        // Sessions only, and only finished ones — a stock correction carries millilitres too,
+        // but that figure is what the fridge holds rather than what came out of anybody.
+        var pumps = (await Pumping.GetRangeAsync(baby.Id, fromUtc, toUtc))
+            .Where(e => e.Kind == PumpEntryKind.Session && e.EndUtc is not null)
+            .ToList();
+        pumpCount = pumps.Count;
+        pumpedMl = pumps.Sum(e => e.AmountMl ?? 0);
+        pumpTotal = pumps.Aggregate(TimeSpan.Zero, (sum, e) => sum + (e.Duration ?? TimeSpan.Zero));
 
         // Every day in the range gets a row, including the quiet ones.
         var byDay = events.GroupBy(e => Display.ToLocal(e.StartUtc).Date)
@@ -191,6 +235,8 @@
                        .Aggregate(TimeSpan.Zero, (sum, e) => sum + e.Duration!.Value),
                 entries.Count(e => e.Kind == EventKind.BottleFeed),
                 entries.Where(e => e.Kind == EventKind.BottleFeed).Sum(e => e.AmountMl ?? 0),
+                entries.Where(e => e.Kind == EventKind.BottleFeed)
+                       .Aggregate(TimeSpan.Zero, (sum, e) => sum + (e.Duration ?? TimeSpan.Zero)),
                 entries.Count(e => e.Kind == EventKind.Poop),
                 entries.Count(e => e.Kind == EventKind.Urine),
                 entries.Count(e => e.Kind == EventKind.Vomit)));
@@ -273,7 +319,17 @@
         await Events.DeleteAsync(id);
     }
 
-    public void Dispose() => Events.Changed -= OnEventsChanged;
+    public void Dispose()
+    {
+        Events.Changed -= OnEventsChanged;
 
-    private record DayRow(DateTime Date, int Breast, TimeSpan BreastTime, int Bottle, int Ml, int Poop, int Urine, int Vomit);
+        // Both, or the page is held alive by the singleton it is still subscribed to and goes
+        // on being told about changes long after its circuit has gone.
+        Pumping.Changed -= OnEventsChanged;
+    }
+
+    private record DayRow(
+        DateTime Date, int Breast, TimeSpan BreastTime,
+        int Bottle, int Ml, TimeSpan BottleTime,
+        int Poop, int Urine, int Vomit);
 }
