@@ -54,7 +54,14 @@ so it shows a dash rather than a zero.
 ## Trends
 
 The same measures as the report, drawn instead of listed, one small bar chart each: sleep, breast
-feeds, bottles, millilitres pumped, and poops.
+feeds, bottles, time on bottles, millilitres pumped, time pumping, and poops.
+
+Bottles and pumping each get two charts — how much, and how long — sitting next to each other and
+sharing a colour. The colour is grouping the two questions about one thing there, rather than
+telling one thing from another; every chart is titled, so nothing depends on it.
+
+Only *timed* bottles count towards the time. One logged in a single tap has no length, so a day of
+those reads as a dash rather than a zero.
 
 Over a range of days it draws a bar a day, so a week or a month has a shape — feeding settling
 down, sleep stretching out, nappies steady. On **Today** it draws a bar an *hour* instead, which

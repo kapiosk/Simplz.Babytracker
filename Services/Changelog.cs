@@ -17,6 +17,12 @@ public static class Changelog
 
     public static readonly IReadOnlyList<Release> Releases =
     [
+        new("1.17", new DateOnly(2026, 9, 15),
+        [
+            "Trends now draws the feeding and pumping times too: Time on bottles sits beside Bottles, and Time pumping beside Pumped.",
+            "The pairs share a colour on purpose — it groups the two questions about one thing rather than telling different things apart."
+        ]),
+
         new("1.16", new DateOnly(2026, 9, 15),
         [
             "A timed bottle is now listed against the time it finished rather than the time it started — when the baby stopped drinking is the moment worth reading off the log. One logged in a single tap is unchanged.",
