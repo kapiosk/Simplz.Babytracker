@@ -37,14 +37,19 @@ Totals across the top:
 
 - **Breast feeds** — how many, total time, average length
 - **Sleep** — total, how many, and the longest single stretch
-- **Bottles** — how many, total millilitres, split between formula and breast milk
+- **Bottles** — how many, total millilitres, how long was spent on them, and the split between
+  formula and breast milk
 - **Poops**, **Urine**, **Vomits** — how many, and a per-day average when the range is longer than
   a day
+- **Pumping** — millilitres, how many sessions, and how long they took. Last of the tiles, because
+  everything above it is about the baby and this one is not.
 
 Below that, a row per day covering every day in the range including the quiet ones, and then the
 entries themselves. Each is editable with the parent password.
 
-Only finished sleeps and feeds count towards the totals — one still running has no length yet.
+Only finished sleeps and feeds count towards the totals — one still running has no length yet. Only
+bottles that were *timed* contribute to the bottle time; one logged in a single tap has no length,
+so it shows a dash rather than a zero.
 
 ## Trends
 

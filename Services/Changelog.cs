@@ -17,6 +17,13 @@ public static class Changelog
 
     public static readonly IReadOnlyList<Release> Releases =
     [
+        new("1.16", new DateOnly(2026, 9, 15),
+        [
+            "A timed bottle is now listed against the time it finished rather than the time it started — when the baby stopped drinking is the moment worth reading off the log. One logged in a single tap is unchanged.",
+            "The report now shows how long was spent on bottles, next to the millilitres, and the day-by-day table has a column for it.",
+            "The report has a Pumping tile too: millilitres, sessions and time over whatever range you have picked."
+        ]),
+
         new("1.15", new DateOnly(2026, 9, 15),
         [
             "Breast feeds and pumping sessions can be paused now, the way a bottle already could. Paused time does not count, so a feed paused for ten of its forty minutes is recorded as thirty.",
