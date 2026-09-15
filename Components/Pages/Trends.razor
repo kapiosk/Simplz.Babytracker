@@ -24,19 +24,28 @@
 <BarChart Label="Breast feeds" Css="breast" IconName="breast" Bucket="@bucket"
           Total="@($"{(int)feeds.Sum(p => p.Value)}")" Points="feeds" />
 
+@* Bottles and pumping each get two charts, how much and how long, and they are deliberately
+   adjacent and the same colour. Seven charts is more than this page was built for — five was
+   already the point at which I said it would want rethinking rather than appending to — and
+   pairing them is what stops it reading as an undifferentiated stack: the colour here groups
+   the two questions about one subject rather than telling subjects apart. *@
 <BarChart Label="Bottles" Css="bottle" IconName="bottle" Bucket="@bucket"
           Total="@($"{(int)bottles.Sum(p => p.Value)} ml")" Points="bottles" />
+
+<BarChart Label="Time on bottles" Css="bottle" IconName="timer" Bucket="@bucket"
+          Total="@Minutes(bottleTime.Sum(p => p.Value))" Points="bottleTime" />
 
 @* Pumping shares the breast colour, because pumped milk is breast milk and because nothing else
    was available: measured against the four already on this page, every distinct candidate ran
    into one of them — teals into the bottle blue and into the breast pink for a deuteranope,
    violets into the sleep indigo, oranges into the poop brown. Four kind colours is what this
    palette holds. It is harmless here because every chart is titled and iconed and carries one
-   series, so colour has never been what tells them apart. Sitting after Bottles rather than
-   beside Breast feeds keeps the two pink charts from touching, and puts the two measured in
-   millilitres together. *@
+   series, so colour has never been what tells them apart. *@
 <BarChart Label="Pumped" Css="breast" IconName="pump" Bucket="@bucket"
           Total="@($"{(int)pumped.Sum(p => p.Value)} ml")" Points="pumped" />
+
+<BarChart Label="Time pumping" Css="breast" IconName="timer" Bucket="@bucket"
+          Total="@Minutes(pumpTime.Sum(p => p.Value))" Points="pumpTime" />
 
 <BarChart Label="Poops" Css="poop" IconName="poop" Bucket="@bucket"
           Total="@($"{(int)poops.Sum(p => p.Value)}")" Points="poops" />
@@ -76,7 +85,9 @@
     private List<BarChart.Point> sleep = [];
     private List<BarChart.Point> feeds = [];
     private List<BarChart.Point> bottles = [];
+    private List<BarChart.Point> bottleTime = [];
     private List<BarChart.Point> pumped = [];
+    private List<BarChart.Point> pumpTime = [];
     private List<BarChart.Point> poops = [];
 
     protected override async Task OnInitializedAsync()
@@ -85,7 +96,7 @@
         Events.Changed += OnEventsChanged;
 
         // Pumping is logged on its own page and does not go through EventService at all, so
-        // without this the pumped chart would sit stale while the other four refreshed.
+        // without this its two charts would sit stale while the rest refreshed.
         Pumping.Changed += OnEventsChanged;
     }
 
@@ -170,7 +181,9 @@
         sleep = [];
         feeds = [];
         bottles = [];
+        bottleTime = [];
         pumped = [];
+        pumpTime = [];
         poops = [];
 
         foreach (var slot in buckets)
@@ -185,14 +198,22 @@
 
             var feedCount = entries.Count(e => e.Kind == EventKind.BreastFeed);
             var ml = entries.Where(e => e.Kind == EventKind.BottleFeed).Sum(e => e.AmountMl ?? 0);
+
+            // Only the timed bottles have a length. One logged in a single tap ends where it
+            // starts, so it adds nothing here rather than a zero.
+            var bottleMinutes = entries
+                .Where(e => e.Kind == EventKind.BottleFeed)
+                .Sum(e => (e.Duration ?? TimeSpan.Zero).TotalMinutes);
             var poopCount = entries.Count(e => e.Kind == EventKind.Poop);
 
             // Sessions only, and only finished ones. A stock correction also carries millilitres,
             // but that figure is what the fridge holds rather than what came out of anybody, and
             // adding it here would inflate the day it was made by the whole stock.
-            var pumpedMl = pumpsIn(slot)
+            var finishedPumps = pumpsIn(slot)
                 .Where(e => e.Kind == PumpEntryKind.Session && e.EndUtc is not null)
-                .Sum(e => e.AmountMl ?? 0);
+                .ToList();
+            var pumpedMl = finishedPumps.Sum(e => e.AmountMl ?? 0);
+            var pumpMinutes = finishedPumps.Sum(e => (e.Duration ?? TimeSpan.Zero).TotalMinutes);
 
             // The second string is what fits under a bar: the unit dropped, because the chart
             // above it is already titled. Sleep needs its own shorter form — "12h 20m" is 41px
@@ -204,6 +225,11 @@
                 $"{feedCount}"));
             bottles.Add(new BarChart.Point(name, ml, $"{ml} ml", $"{ml}"));
             pumped.Add(new BarChart.Point(name, pumpedMl, $"{pumpedMl} ml", $"{pumpedMl}"));
+
+            bottleTime.Add(new BarChart.Point(name, bottleMinutes, Minutes(bottleMinutes),
+                bottleMinutes >= 1 ? Display.Compact(TimeSpan.FromMinutes(bottleMinutes)) : null));
+            pumpTime.Add(new BarChart.Point(name, pumpMinutes, Minutes(pumpMinutes),
+                pumpMinutes >= 1 ? Display.Compact(TimeSpan.FromMinutes(pumpMinutes)) : null));
             poops.Add(new BarChart.Point(name, poopCount, $"{poopCount}"));
         }
     }
