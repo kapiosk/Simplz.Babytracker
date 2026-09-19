@@ -17,6 +17,13 @@ public static class Changelog
 
     public static readonly IReadOnlyList<Release> Releases =
     [
+        new("1.18", new DateOnly(2026, 9, 19),
+        [
+            "Fixed: nudging the stop time of a feed used to change how long the baby had fed for. The feeding time now stays put and the difference goes to the paused time instead, which is where it belonged.",
+            "The editor has a Feeding time box of its own, so you can correct it directly, and says underneath how much of the window that leaves as paused. Pump sessions get the same, as Pumping time.",
+            "Fixed: the editor was calling the whole start-to-stop window the duration, so a feed with twenty minutes paused out of forty was reported there as forty."
+        ]),
+
         new("1.17", new DateOnly(2026, 9, 15),
         [
             "Trends now draws the feeding and pumping times too: Time on bottles sits beside Bottles, and Time pumping beside Pumped.",

@@ -73,6 +73,26 @@ else.
 This is the part worth knowing, because it is the difference between a tracker you keep up and one
 you abandon at four in the morning.
 
+### Feeding time is its own figure
+
+A feed that was paused did not last the whole stretch between its start and its stop, so the
+editor keeps the two apart:
+
+```
+stop − start  =  feeding time  +  paused
+```
+
+**Moving the stop time does not change the feeding time.** The difference goes to the paused
+time, which is what you want when the real correction is "I left the timer running ten minutes
+too long" rather than "the baby fed for ten minutes less".
+
+**Feeding time** has its own box if you want to correct it directly, and the line underneath says
+how much of the window that leaves as paused. The only time the feeding time gives way is when you
+make the window shorter than it — there is no fitting forty minutes of feeding into thirty, so it
+is trimmed and says so.
+
+Pump sessions work the same way, as **Pumping time**.
+
 **To fix an entry**, tap the pencil beside it in the log. You can change what it was, when it
 started, when it stopped, the amount, the milk and the note. Every time field has one-tap nudges —
 −1h, −15m, −5m, +5m, +15m, +1h — and a **Now** button, so correcting a feed to *actually, that

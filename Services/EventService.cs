@@ -383,6 +383,13 @@ public class EventService(IDbContextFactory<AppDbContext> factory, MediaService 
         ev.Milk = updated.Milk;
         ev.AmountMl = updated.AmountMl;
         ev.Notes = updated.Notes;
+
+        // The pause carries too, because the editor is what decides it now. Moving the stop time
+        // of a paused feed has to put the difference into the pause rather than take it off the
+        // feeding — see the arithmetic in EditEventDialog. Leaving these out was what made
+        // adjusting a stop time quietly rewrite how long the baby had fed for.
+        ev.PausedSeconds = updated.PausedSeconds;
+        ev.PausedAtUtc = updated.PausedAtUtc;
         await db.SaveChangesAsync(ct);
         NotifyChanged(ev.BabyId);
     }

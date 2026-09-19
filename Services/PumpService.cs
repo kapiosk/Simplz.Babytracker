@@ -317,6 +317,11 @@ public sealed class PumpService(IDbContextFactory<AppDbContext> factory, ILogger
         entry.EndUtc = updated.EndUtc;
         entry.AmountMl = updated.AmountMl;
         entry.Notes = Clean(updated.Notes);
+
+        // Same as the event editor: the pause is the slack between the window and the time
+        // actually spent pumping, and the editor is what sets it.
+        entry.PausedSeconds = updated.PausedSeconds;
+        entry.PausedAtUtc = updated.PausedAtUtc;
         await db.SaveChangesAsync(ct);
         NotifyChanged(entry.BabyId);
     }

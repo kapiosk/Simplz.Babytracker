@@ -67,6 +67,46 @@ public class BabyEvent
     public static bool Lasts(EventKind kind) => LastingKinds.Contains(kind);
 
     /// <summary>
+    /// The kinds that can be paused: the two sorts of feed. A sleep cannot — a baby who wakes and
+    /// resettles is one sleep or two, not a paused one — which is also why only these two have a
+    /// feeding time that can differ from the stretch between their start and their stop.
+    /// </summary>
+    public static bool CanPause(EventKind kind) =>
+        kind is EventKind.BreastFeed or EventKind.BottleFeed;
+
+    /// <summary>
+    /// How much of a window was not spent doing the thing, given how much of it was:
+    ///
+    ///     stop − start  =  spent  +  paused
+    ///
+    /// The editors hold the spent figure and let this decide the pause, which is what stops
+    /// nudging a stop time from rewriting how long a baby fed for.
+    ///
+    /// Clamped both ways. A pause cannot be negative, so a figure longer than its own window is
+    /// taken to be the whole window — there is no fitting forty minutes of feeding into thirty.
+    /// Shared with the pump editor, which does the same arithmetic on its own entries.
+    /// </summary>
+    public static int PausedSecondsFor(TimeSpan window, TimeSpan spent)
+    {
+        if (window < TimeSpan.Zero)
+        {
+            window = TimeSpan.Zero;
+        }
+
+        if (spent > window)
+        {
+            spent = window;
+        }
+
+        if (spent < TimeSpan.Zero)
+        {
+            spent = TimeSpan.Zero;
+        }
+
+        return (int)Math.Round((window - spent).TotalSeconds);
+    }
+
+    /// <summary>
     /// Below this, a sleep is taken to be a mis-tap rather than a nap. See
     /// <see cref="TooShortToKeep"/>.
     /// </summary>
