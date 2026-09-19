@@ -26,6 +26,19 @@
                        Hint="@DurationHint" />
         }
 
+        @if (BabyEvent.CanPause(kind) && TimeField.Parse(endText) is not null)
+        {
+            @* Its own field because it is its own fact. A feed that was paused did not last the
+               stretch between its start and its stop, so moving the stop time cannot be allowed
+               to decide how long the baby fed for — that difference belongs to the pause. *@
+            <div class="field">
+                <label for="edit-feeding">Feeding time (minutes)</label>
+                <input id="edit-feeding" type="number" inputmode="numeric" min="0" max="600" step="1"
+                       @bind="feedMinutes" @bind:event="oninput" />
+                <div class="hint-line">@FeedingHint</div>
+            </div>
+        }
+
         @if (kind == EventKind.BottleFeed)
         {
             <div class="field">
@@ -143,6 +156,8 @@
     private string endText = "";
     private MilkKind milk = MilkKind.BreastMilk;
     private int? amount;
+    private int feedMinutes;
+    private int initialFeedMinutes;
     private string? notes;
     private bool confirmDelete;
     private int loadedId = -1;
@@ -174,8 +189,17 @@
             }
 
             var span = end.Value - start.Value;
-            return span < TimeSpan.Zero
-                ? "The end is before the start."
+
+            if (span < TimeSpan.Zero)
+            {
+                return "The end is before the start.";
+            }
+
+            // Only for the kinds that cannot pause is this also the duration. It used to say
+            // "Duration" for everything, which was wrong the moment feeds could be paused: a
+            // forty minute window with twenty of it paused was reported here as forty.
+            return BabyEvent.CanPause(kind)
+                ? $"{Display.Duration(span)} from start to stop"
                 : $"Duration: {Display.Duration(span)}";
         }
     }
@@ -194,6 +218,13 @@
         endText = Event.EndUtc is null ? "" : TimeField.ToText(Display.ToLocal(Event.EndUtc.Value));
         milk = Event.Milk ?? MilkKind.BreastMilk;
         amount = Event.AmountMl;
+
+        // Whole minutes for the box. A still-running entry has no recorded figure yet, so it
+        // opens on what it has spent feeding so far.
+        initialFeedMinutes = (int)Math.Round(
+            (Event.Duration ?? Event.ElapsedAt(DateTime.UtcNow)).TotalMinutes);
+        feedMinutes = initialFeedMinutes;
+
         notes = Event.Notes;
         confirmDelete = false;
         mediaMessage = null;
@@ -279,6 +310,77 @@
             updated.EndUtc = updated.StartUtc;
         }
 
+        ApplyPause(updated);
+
         return OnSave.InvokeAsync(updated);
+    }
+
+    /// <summary>
+    /// Start, stop and feeding time are three readings of two facts: the window is the stop minus
+    /// the start, and whatever of that window was not feeding was paused.
+    ///
+    ///     stop − start  =  feeding  +  paused
+    ///
+    /// The feeding time is the one held fixed, so moving the stop changes the pause rather than
+    /// rewriting how long the baby fed for. Typing a feeding time changes the pause too, from
+    /// the other side. Only when the window is made shorter than the feeding time does the
+    /// feeding time give — there is no fitting forty minutes of feeding into thirty.
+    /// </summary>
+    private void ApplyPause(BabyEvent updated)
+    {
+        if (!BabyEvent.CanPause(updated.Kind) || updated.EndUtc is not { } end)
+        {
+            // Nothing here can hold a pause, or it is still running and the figure is still
+            // moving. Carry what was there rather than inventing one.
+            updated.PausedSeconds = Event.PausedSeconds;
+            updated.PausedAtUtc = Event.PausedAtUtc;
+            return;
+        }
+
+        var window = end - updated.StartUtc;
+
+        // An untouched box uses the stored figure exactly rather than the whole minutes it was
+        // displayed as, so saving without touching it does not quietly shave off the seconds.
+        var feeding = feedMinutes == initialFeedMinutes && Event.Duration is { } recorded
+            ? recorded
+            : TimeSpan.FromMinutes(Math.Max(0, feedMinutes));
+
+        updated.PausedSeconds = BabyEvent.PausedSecondsFor(window, feeding);
+
+        // A finished entry is never paused, whatever it was doing when the editor opened.
+        updated.PausedAtUtc = null;
+    }
+
+    private string FeedingHint
+    {
+        get
+        {
+            var start = TimeField.Parse(startText);
+            var end = TimeField.Parse(endText);
+
+            if (start is null || end is null)
+            {
+                return "";
+            }
+
+            var window = end.Value - start.Value;
+            if (window < TimeSpan.Zero)
+            {
+                return "The stop is before the start.";
+            }
+
+            var feeding = TimeSpan.FromMinutes(Math.Max(0, feedMinutes));
+
+            if (feeding > window)
+            {
+                return $"Longer than the {Display.Duration(window)} between the start and the stop, "
+                       + $"so it will be saved as {Display.Duration(window)}.";
+            }
+
+            var paused = window - feeding;
+            return paused > TimeSpan.Zero
+                ? $"Leaves {Display.Duration(paused)} of that window as paused."
+                : "The whole window counts as feeding.";
+        }
     }
 }

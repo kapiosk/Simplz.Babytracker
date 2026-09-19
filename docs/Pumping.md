@@ -61,7 +61,10 @@ Every session and every correction is listed underneath, newest first, with how 
 came out, and **how long ago it ended** — *3h 42m ago* — which is usually the thing being asked
 when you glance at it. Entries from today show the time only; anything older carries its date too.
 
-Tap the pencil to change any of it, or to delete an entry outright.
+Tap the pencil to change any of it, or to delete an entry outright. **Pumping time** is its own box
+there: moving the stop time leaves it alone and puts the difference into the paused time instead,
+and you can correct the figure directly if it is wrong. See
+[Tracking a day](Tracking-a-day) for the arithmetic, which is the same on a feed.
 
 **+ Add a session from earlier** is there for the ones you did not log at the time. It opens
 pre-filled as a session that started twenty minutes ago and has just finished.
