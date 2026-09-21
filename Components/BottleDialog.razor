@@ -17,6 +17,22 @@
             </div>
         </div>
 
+        @if (milk == MilkKind.BreastMilk)
+        {
+            @* Which bag it came from. Never guessed from the clock: a bottle given at night is
+               made up from whichever bag was to hand, and only the person holding it knows. Left
+               blank it is counted as unlabelled rather than assigned a side. *@
+            <div class="field">
+                <label>Which batch?</label>
+                <div class="choice">
+                    <button type="button" class="@(batch == MilkTime.Morning ? "on" : "")"
+                            @onclick="() => batch = Toggle(MilkTime.Morning)">Morning milk</button>
+                    <button type="button" class="@(batch == MilkTime.Night ? "on" : "")"
+                            @onclick="() => batch = Toggle(MilkTime.Night)">Night milk</button>
+                </div>
+            </div>
+        }
+
         <div class="field">
             <label for="amount">Amount (ml)</label>
             <input id="amount" type="number" inputmode="numeric" min="0" max="1000" step="5" @bind="amount" />
@@ -70,16 +86,22 @@
     [Parameter] public string? FinishHint { get; set; }
 
     [Parameter] public MilkKind InitialMilk { get; set; } = MilkKind.BreastMilk;
+    [Parameter] public MilkTime? InitialBatch { get; set; }
     [Parameter] public int? InitialAmount { get; set; }
     [Parameter] public string? InitialNotes { get; set; }
 
     private MilkKind milk = MilkKind.BreastMilk;
+    private MilkTime? batch;
     private int? amount;
     private string? notes;
+
+    /// <summary>Tapping the chip already on clears it — optional means a way to un-choose.</summary>
+    private MilkTime? Toggle(MilkTime tapped) => batch == tapped ? null : tapped;
 
     protected override void OnInitialized()
     {
         milk = InitialMilk;
+        batch = InitialBatch;
         amount = InitialAmount;
         notes = InitialNotes;
     }
@@ -89,7 +111,8 @@
     private Task Start() => OnStart.InvokeAsync(Entry());
 
     private BottleEntry Entry() =>
-        new(milk, amount, string.IsNullOrWhiteSpace(notes) ? null : notes.Trim());
+        new(milk, amount, milk == MilkKind.BreastMilk ? batch : null,
+            string.IsNullOrWhiteSpace(notes) ? null : notes.Trim());
 
-    public record BottleEntry(MilkKind Milk, int? AmountMl, string? Notes);
+    public record BottleEntry(MilkKind Milk, int? AmountMl, MilkTime? Batch, string? Notes);
 }

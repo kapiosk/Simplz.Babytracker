@@ -51,6 +51,19 @@
                 </div>
             </div>
 
+            @if (milk == MilkKind.BreastMilk)
+            {
+                <div class="field">
+                    <label>Which batch?</label>
+                    <div class="choice">
+                        <button type="button" class="@(batch == MilkTime.Morning ? "on" : "")"
+                                @onclick="() => batch = batch == MilkTime.Morning ? null : MilkTime.Morning">Morning milk</button>
+                        <button type="button" class="@(batch == MilkTime.Night ? "on" : "")"
+                                @onclick="() => batch = batch == MilkTime.Night ? null : MilkTime.Night">Night milk</button>
+                    </div>
+                </div>
+            }
+
             <div class="field">
                 <label for="edit-amount">Amount (ml)</label>
                 <input id="edit-amount" type="number" inputmode="numeric" min="0" max="1000" step="5" @bind="amount" />
@@ -155,6 +168,7 @@
     private string startText = "";
     private string endText = "";
     private MilkKind milk = MilkKind.BreastMilk;
+    private MilkTime? batch;
     private int? amount;
     private int feedMinutes;
     private int initialFeedMinutes;
@@ -217,6 +231,7 @@
         startText = TimeField.ToText(Display.ToLocal(Event.StartUtc));
         endText = Event.EndUtc is null ? "" : TimeField.ToText(Display.ToLocal(Event.EndUtc.Value));
         milk = Event.Milk ?? MilkKind.BreastMilk;
+        batch = Event.MilkTime;
         amount = Event.AmountMl;
 
         // Whole minutes for the box. A still-running entry has no recorded figure yet, so it
@@ -301,6 +316,7 @@
             StartUtc = Display.ToUtc(startLocal),
             EndUtc = BabyEvent.Lasts(kind) && endLocal is not null ? Display.ToUtc(endLocal.Value) : null,
             Milk = kind == EventKind.BottleFeed ? milk : null,
+            MilkTime = kind == EventKind.BottleFeed && milk == MilkKind.BreastMilk ? batch : null,
             AmountMl = kind == EventKind.BottleFeed ? amount : null,
             Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim()
         };

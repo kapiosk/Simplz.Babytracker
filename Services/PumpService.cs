@@ -18,12 +18,31 @@ namespace Simplz.Babytracker.Services;
 /// logged and the stock has never been set.
 /// </param>
 /// <param name="WasSet">Whether <paramref name="FromUtc"/> is a correction somebody made.</param>
-public sealed record Stock(int Ml, int OpeningMl, DateTime? FromUtc, int PumpedMl, int TakenMl, bool WasSet)
+/// <param name="Batches">
+/// The same arithmetic run separately for morning milk, night milk, and milk nobody labelled.
+/// Their figures add up to <see cref="Ml"/>. The unlabelled line is kept rather than folded
+/// into a side, because guessing which bag an unlabelled bottle came from would quietly
+/// corrupt the count of the other two — and the whole point of labelling is the night figure.
+/// </param>
+public sealed record Stock(
+    int Ml, int OpeningMl, DateTime? FromUtc, int PumpedMl, int TakenMl, bool WasSet,
+    IReadOnlyList<BatchLine> Batches)
 {
     /// <summary>Nothing pumped, nothing set — there is no stock to speak of yet.</summary>
-    public static readonly Stock Unknown = new(0, 0, null, 0, 0, false);
+    public static readonly Stock Unknown = new(0, 0, null, 0, 0, false, []);
 
     public bool IsKnown => FromUtc is not null;
+
+    public BatchLine? Of(MilkTime? batch) => Batches.FirstOrDefault(b => b.Batch == batch);
+}
+
+/// <summary>What one batch contributes to the fridge, and how it got there.</summary>
+public sealed record BatchLine(MilkTime? Batch, int OpeningMl, int PumpedMl, int TakenMl)
+{
+    public int Ml => OpeningMl + PumpedMl - TakenMl;
+
+    /// <summary>Whether there is anything at all to say about this batch.</summary>
+    public bool Any => OpeningMl != 0 || PumpedMl != 0 || TakenMl != 0;
 }
 
 /// <summary>
@@ -107,7 +126,8 @@ public sealed class PumpService(IDbContextFactory<AppDbContext> factory, ILogger
     /// No ten-minute floor here, unlike a sleep. A short session still produced milk, and the
     /// millilitres are the point of the entry — the clock is the incidental part.
     /// </summary>
-    public async Task StopAsync(int id, int? amountMl, string? notes, CancellationToken ct = default)
+    public async Task StopAsync(
+        int id, int? amountMl, MilkTime? batch, string? notes, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         var entry = await db.PumpEntries.FirstOrDefaultAsync(e => e.Id == id, ct);
@@ -128,6 +148,7 @@ public sealed class PumpService(IDbContextFactory<AppDbContext> factory, ILogger
 
         entry.EndUtc = now;
         entry.AmountMl = amountMl;
+        entry.MilkTime = batch;
         entry.Notes = Clean(notes);
         await db.SaveChangesAsync(ct);
         NotifyChanged(entry.BabyId);
@@ -168,19 +189,35 @@ public sealed class PumpService(IDbContextFactory<AppDbContext> factory, ILogger
     /// Records that the stock is <paramref name="ml"/> as of now. Everything before this stops
     /// counting: this figure becomes what the ledger starts from.
     /// </summary>
-    public async Task SetStockAsync(int babyId, int ml, string? notes, CancellationToken ct = default)
+    public async Task SetStockAsync(
+        int babyId, int morningMl, int nightMl, string? notes, CancellationToken ct = default)
     {
-        var entry = new PumpEntry
+        // One row per batch, stamped with the same instant, so the ledger can find both as the
+        // opening of the same count. A correction says what is there and that it is all
+        // labelled, so it deliberately writes no unlabelled row: anything unlabelled starts
+        // again from nothing.
+        var now = DateTime.UtcNow;
+        var cleaned = Clean(notes);
+
+        await using var db = await factory.CreateDbContextAsync(ct);
+        db.PumpEntries.Add(new PumpEntry
         {
             BabyId = babyId,
             Kind = PumpEntryKind.StockSet,
-            StartUtc = DateTime.UtcNow,
-            AmountMl = Math.Max(0, ml),
-            Notes = Clean(notes)
-        };
-
-        await using var db = await factory.CreateDbContextAsync(ct);
-        db.PumpEntries.Add(entry);
+            StartUtc = now,
+            AmountMl = Math.Max(0, morningMl),
+            MilkTime = MilkTime.Morning,
+            Notes = cleaned
+        });
+        db.PumpEntries.Add(new PumpEntry
+        {
+            BabyId = babyId,
+            Kind = PumpEntryKind.StockSet,
+            StartUtc = now,
+            AmountMl = Math.Max(0, nightMl),
+            MilkTime = MilkTime.Night,
+            Notes = cleaned
+        });
         await db.SaveChangesAsync(ct);
         NotifyChanged(babyId);
     }
@@ -203,7 +240,14 @@ public sealed class PumpService(IDbContextFactory<AppDbContext> factory, ILogger
 
         if (lastSet is not null)
         {
-            (fromUtc, opening, wasSet) = (lastSet.StartUtc, lastSet.AmountMl ?? 0, true);
+            // Every row at that instant: two since corrections were split by batch, one before.
+            var openingTotal = await db.PumpEntries
+                .Where(e => e.BabyId == babyId
+                            && e.Kind == PumpEntryKind.StockSet
+                            && e.StartUtc == lastSet.StartUtc)
+                .SumAsync(e => e.AmountMl ?? 0, ct);
+
+            (fromUtc, opening, wasSet) = (lastSet.StartUtc, openingTotal, true);
         }
         else
         {
@@ -227,6 +271,18 @@ public sealed class PumpService(IDbContextFactory<AppDbContext> factory, ILogger
             (fromUtc, opening, wasSet) = (firstSession.StartUtc, 0, false);
         }
 
+        // The opening is every correction row written at the baseline instant — one per batch
+        // since batches existed, a single unlabelled total from before they did.
+        var openings = wasSet
+            ? await db.PumpEntries
+                .Where(e => e.BabyId == babyId
+                            && e.Kind == PumpEntryKind.StockSet
+                            && e.StartUtc == fromUtc)
+                .GroupBy(e => e.MilkTime)
+                .Select(g => new { Batch = g.Key, Ml = g.Sum(e => e.AmountMl ?? 0) })
+                .ToListAsync(ct)
+            : [];
+
         // A session in progress has not produced anything yet, so it does not count until it is
         // stopped and the amount is entered.
         var pumped = await db.PumpEntries
@@ -234,16 +290,34 @@ public sealed class PumpService(IDbContextFactory<AppDbContext> factory, ILogger
                         && e.Kind == PumpEntryKind.Session
                         && e.StartUtc >= fromUtc
                         && e.EndUtc != null)
-            .SumAsync(e => e.AmountMl ?? 0, ct);
+            .GroupBy(e => e.MilkTime)
+            .Select(g => new { Batch = g.Key, Ml = g.Sum(e => e.AmountMl ?? 0) })
+            .ToListAsync(ct);
 
         var taken = await db.Events
             .Where(e => e.BabyId == babyId
                         && e.Kind == EventKind.BottleFeed
                         && e.Milk == MilkKind.BreastMilk
                         && e.StartUtc >= fromUtc)
-            .SumAsync(e => e.AmountMl ?? 0, ct);
+            .GroupBy(e => e.MilkTime)
+            .Select(g => new { Batch = g.Key, Ml = g.Sum(e => e.AmountMl ?? 0) })
+            .ToListAsync(ct);
 
-        return new Stock(opening + pumped - taken, opening, fromUtc, pumped, taken, wasSet);
+        // Morning, night, then unlabelled: a fixed order so the card reads the same every time.
+        MilkTime?[] order = [MilkTime.Morning, MilkTime.Night, null];
+        var lines = order
+            .Select(batch => new BatchLine(
+                batch,
+                openings.FirstOrDefault(o => o.Batch == batch)?.Ml ?? 0,
+                pumped.FirstOrDefault(o => o.Batch == batch)?.Ml ?? 0,
+                taken.FirstOrDefault(o => o.Batch == batch)?.Ml ?? 0))
+            .ToList();
+
+        var totalPumped = lines.Sum(l => l.PumpedMl);
+        var totalTaken = lines.Sum(l => l.TakenMl);
+
+        return new Stock(
+            opening + totalPumped - totalTaken, opening, fromUtc, totalPumped, totalTaken, wasSet, lines);
     }
 
     /// <summary>How much was pumped, and over how many sessions, between two instants.</summary>
@@ -316,6 +390,7 @@ public sealed class PumpService(IDbContextFactory<AppDbContext> factory, ILogger
         entry.StartUtc = updated.StartUtc;
         entry.EndUtc = updated.EndUtc;
         entry.AmountMl = updated.AmountMl;
+        entry.MilkTime = updated.MilkTime;
         entry.Notes = Clean(updated.Notes);
 
         // Same as the event editor: the pause is the slack between the window and the time

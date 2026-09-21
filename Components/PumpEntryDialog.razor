@@ -31,6 +31,19 @@
             </div>
         }
 
+        @if (!IsStockSet)
+        {
+            <div class="field">
+                <label>Which batch?</label>
+                <div class="choice">
+                    <button type="button" class="@(batch == MilkTime.Morning ? "on" : "")"
+                            @onclick="() => batch = batch == MilkTime.Morning ? null : MilkTime.Morning">Morning milk</button>
+                    <button type="button" class="@(batch == MilkTime.Night ? "on" : "")"
+                            @onclick="() => batch = batch == MilkTime.Night ? null : MilkTime.Night">Night milk</button>
+                </div>
+            </div>
+        }
+
         <div class="field">
             <label for="pump-amount">@(IsStockSet ? "Stock at that moment (ml)" : "Pumped (ml)")</label>
             <input id="pump-amount" type="number" inputmode="numeric" min="0" max="2000" step="5" @bind="amount" />
@@ -81,6 +94,7 @@
     private string startText = "";
     private string endText = "";
     private int? amount;
+    private MilkTime? batch;
     private int pumpMinutes;
     private int initialPumpMinutes;
     private string? notes;
@@ -127,6 +141,7 @@
         startText = TimeField.ToText(Display.ToLocal(Entry.StartUtc));
         endText = Entry.EndUtc is null ? "" : TimeField.ToText(Display.ToLocal(Entry.EndUtc.Value));
         amount = Entry.AmountMl;
+        batch = Entry.MilkTime;
 
         initialPumpMinutes = (int)Math.Round(
             (Entry.Duration ?? Entry.ElapsedAt(DateTime.UtcNow)).TotalMinutes);
@@ -157,6 +172,9 @@
             StartUtc = Display.ToUtc(start),
             EndUtc = end is null ? null : Display.ToUtc(end.Value),
             AmountMl = amount,
+
+            // A correction row keeps the side it was written for; only a session is re-labelled.
+            MilkTime = IsStockSet ? Entry.MilkTime : batch,
             Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim()
         };
 

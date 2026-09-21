@@ -47,6 +47,13 @@ public class PumpEntry
     public int? AmountMl { get; set; }
 
     /// <summary>
+    /// Which batch this is. On a session, what was expressed; on a correction, which side of
+    /// the fridge the figure describes — a correction writes one row per batch at the same
+    /// instant, and an old correction with no batch is a total from before batches existed.
+    /// </summary>
+    public MilkTime? MilkTime { get; set; }
+
+    /// <summary>
     /// Only for a session: when it was paused, while it is paused. Cleared when it stops, the
     /// last stretch going into <see cref="PausedSeconds"/>, so a finished session never reads
     /// as paused. Mirrors the pair on <see cref="BabyEvent"/>, which does the same job there.

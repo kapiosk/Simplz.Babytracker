@@ -1195,6 +1195,18 @@ body { padding-top: var(--circuit-banner-h, 0px); }
 .stock-ledger .up,
 .stock-ledger .down { color: var(--text); font-weight: 700; }
 
+/* The fridge by batch. The figure is what matters, the word is which side it is. */
+.stock-batches {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .2rem 1rem;
+    margin-top: .4rem;
+    font-size: .8rem;
+    color: var(--text-dim);
+}
+
+.stock-batches b { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
+
 .stock-empty, .stock-warn {
     margin-top: .4rem;
     font-size: .82rem;

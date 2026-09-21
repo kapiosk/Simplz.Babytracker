@@ -153,11 +153,12 @@ public class EventService(IDbContextFactory<AppDbContext> factory, MediaService 
 
     /// <summary>Starts a timed bottle feed, carrying what is already known about it.</summary>
     public Task<StartResult> StartBottleAsync(
-        int babyId, MilkKind milk, int? amountMl, string? notes, CancellationToken ct = default) =>
+        int babyId, MilkKind milk, int? amountMl, MilkTime? batch, string? notes, CancellationToken ct = default) =>
         StartAsync(babyId, EventKind.BottleFeed, ev =>
         {
             ev.Milk = milk;
             ev.AmountMl = amountMl;
+            ev.MilkTime = milk == MilkKind.BreastMilk ? batch : null;
             ev.Notes = notes;
         }, ct);
 
@@ -197,7 +198,7 @@ public class EventService(IDbContextFactory<AppDbContext> factory, MediaService 
     /// banked first, so a feed ended while paused does not count that last stretch as feeding.
     /// </summary>
     public async Task StopBottleAsync(
-        int id, MilkKind milk, int? amountMl, string? notes, CancellationToken ct = default)
+        int id, MilkKind milk, int? amountMl, MilkTime? batch, string? notes, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         var ev = await db.Events.FirstOrDefaultAsync(e => e.Id == id, ct);
@@ -217,6 +218,10 @@ public class EventService(IDbContextFactory<AppDbContext> factory, MediaService 
         ev.EndUtc = now;
         ev.Milk = milk;
         ev.AmountMl = amountMl;
+
+        // A batch only means anything on breast milk; formula switched to at the last moment
+        // must not keep a label that belonged to a different bottle.
+        ev.MilkTime = milk == MilkKind.BreastMilk ? batch : null;
         ev.Notes = notes;
         await db.SaveChangesAsync(ct);
         NotifyChanged(ev.BabyId);
@@ -306,7 +311,8 @@ public class EventService(IDbContextFactory<AppDbContext> factory, MediaService 
         return ev;
     }
 
-    public async Task<BabyEvent> LogBottleAsync(int babyId, MilkKind milk, int? amountMl, string? notes = null, CancellationToken ct = default)
+    public async Task<BabyEvent> LogBottleAsync(
+        int babyId, MilkKind milk, int? amountMl, MilkTime? batch = null, string? notes = null, CancellationToken ct = default)
     {
         var now = DateTime.UtcNow;
         var ev = new BabyEvent
@@ -322,6 +328,7 @@ public class EventService(IDbContextFactory<AppDbContext> factory, MediaService 
             EndUtc = now,
             Milk = milk,
             AmountMl = amountMl,
+            MilkTime = milk == MilkKind.BreastMilk ? batch : null,
             Notes = notes
         };
         await using var db = await factory.CreateDbContextAsync(ct);
@@ -382,6 +389,7 @@ public class EventService(IDbContextFactory<AppDbContext> factory, MediaService 
         ev.EndUtc = updated.EndUtc;
         ev.Milk = updated.Milk;
         ev.AmountMl = updated.AmountMl;
+        ev.MilkTime = updated.Milk == MilkKind.BreastMilk ? updated.MilkTime : null;
         ev.Notes = updated.Notes;
 
         // The pause carries too, because the editor is what decides it now. Moving the stop time
