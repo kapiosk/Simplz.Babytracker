@@ -17,6 +17,13 @@ public static class Changelog
 
     public static readonly IReadOnlyList<Release> Releases =
     [
+        new("1.21", new DateOnly(2026, 9, 21),
+        [
+            "Fixed: the average day was overstating sleep — 14h 20m a day where the real figure was 13h 02m. It was adding up the lengths of each stretch, and two stretches the average shows apart are often one long one on any given day, so those hours were counted twice. It now counts each day once and agrees with the Sleep chart.",
+            "It also said how many feeds a day, which was never true — a feed at a wandering hour never shows up as its own block. That is now how long a day goes on feeding instead.",
+            "The average day has moved to the bottom of Trends, under the bars."
+        ]),
+
         new("1.20", new DateOnly(2026, 9, 21),
         [
             "Trends now opens with the shape of an average day: two twelve-hour strips with sleep drawn as a band, feeds as notches on it, and the awake stretches left clear. Each half-hour shows what the baby was most often doing at that time across the range you have picked.",
