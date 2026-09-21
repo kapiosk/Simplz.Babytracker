@@ -45,6 +45,7 @@ public static class Display
         EventKind.BottleFeed => e.Milk switch
         {
             MilkKind.Formula => "Bottle · formula",
+            MilkKind.BreastMilk when e.MilkTime is { } batch => $"Bottle · {Batch(batch)} milk",
             MilkKind.BreastMilk => "Bottle · breast milk",
             _ => "Bottle"
         },
@@ -65,6 +66,9 @@ public static class Display
         EventKind.Sleep => "Sleep",
         _ => kind.ToString()
     };
+
+    /// <summary>The batch, lower case, for the middle of a sentence: "night milk".</summary>
+    public static string Batch(MilkTime batch) => batch == MilkTime.Night ? "night" : "morning";
 
     /// <summary>CSS class suffix used for the per-kind colour scheme.</summary>
     public static string Css(EventKind kind) => kind switch

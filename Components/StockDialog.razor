@@ -1,0 +1,71 @@
+@* Correcting the fridge, one figure per batch.
+
+   Its own sheet rather than a second field bolted onto AmountDialog: that one is "a number and a
+   note", and this is two numbers that mean different things. A correction says what is there
+   and that it has all been counted, so there is no third box for unlabelled milk — put a bag you
+   are not sure of under whichever you would use it as. *@
+
+<div class="sheet-backdrop" @onclick="() => OnCancel.InvokeAsync()">
+    <div class="sheet" @onclick:stopPropagation="true">
+        <h2><span class="ico breast"><Icon Name="pump" /></span> @(Correcting ? "Correct the stock" : "Set the stock")</h2>
+
+        <div class="hint-line sheet-hint">
+            What is in the fridge right now, by batch. Everything before this stops counting: from
+            here on each side goes up as you pump and down as its bottles are given.
+        </div>
+
+        <div class="field">
+            <label for="stock-morning">Morning milk (ml)</label>
+            <input id="stock-morning" type="number" inputmode="numeric" min="0" max="5000" step="5" @bind="morning" />
+        </div>
+
+        <div class="field">
+            <label for="stock-night">Night milk (ml)</label>
+            <input id="stock-night" type="number" inputmode="numeric" min="0" max="5000" step="5" @bind="night" />
+        </div>
+
+        <div class="hint-line">@Total</div>
+
+        <div class="field">
+            <label for="stock-notes">Notes (optional)</label>
+            <input id="stock-notes" type="text" maxlength="500" @bind="notes" />
+        </div>
+
+        <div class="row-btns">
+            <button type="button" class="btn" @onclick="() => OnCancel.InvokeAsync()">Cancel</button>
+            <button type="button" class="btn primary" disabled="@(morning is null && night is null)" @onclick="Save">Set</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    /// <summary>Whether a count already exists, which only changes the heading.</summary>
+    [Parameter] public bool Correcting { get; set; }
+
+    [Parameter] public int? InitialMorning { get; set; }
+    [Parameter] public int? InitialNight { get; set; }
+
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback<Entry> OnSave { get; set; }
+
+    private int? morning;
+    private int? night;
+    private string? notes;
+
+    protected override void OnInitialized()
+    {
+        // Prefilled with what the ledger currently believes, so a correction that is right about
+        // one side only needs the other typed. Negative figures are the ledger complaining, not
+        // a sensible thing to offer back.
+        morning = InitialMorning is > 0 ? InitialMorning : null;
+        night = InitialNight is > 0 ? InitialNight : null;
+    }
+
+    private string Total => $"{(morning ?? 0) + (night ?? 0)} ml in total.";
+
+    private Task Save() =>
+        OnSave.InvokeAsync(new Entry(morning ?? 0, night ?? 0,
+            string.IsNullOrWhiteSpace(notes) ? null : notes.Trim()));
+
+    public sealed record Entry(int MorningMl, int NightMl, string? Notes);
+}

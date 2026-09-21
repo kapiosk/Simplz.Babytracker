@@ -18,6 +18,19 @@ public enum MilkKind
     BreastMilk = 1
 }
 
+/// <summary>
+/// Which batch of breast milk: what was expressed in the morning or what was expressed at
+/// night. They differ — night milk carries the melatonin — so bags get labelled and the night
+/// ones get kept for the night. Always set by hand: the clock can say when a session happened,
+/// but only whoever made up the bottle knows which bag it came from, and the boundary between
+/// the two is theirs to draw.
+/// </summary>
+public enum MilkTime
+{
+    Morning = 0,
+    Night = 1
+}
+
 public class BabyEvent
 {
     public int Id { get; set; }
@@ -38,6 +51,12 @@ public class BabyEvent
 
     /// <summary>Only used by bottle feeding: millilitres given.</summary>
     public int? AmountMl { get; set; }
+
+    /// <summary>
+    /// Only used by a bottle of breast milk: which batch it was made up from. Null when nobody
+    /// said, which the stock ledger keeps as its own line rather than guessing a side.
+    /// </summary>
+    public MilkTime? MilkTime { get; set; }
 
     /// <summary>
     /// Only used by bottle feeding: when the feed was paused, while it is paused. Null the rest

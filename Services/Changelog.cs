@@ -17,6 +17,13 @@ public static class Changelog
 
     public static readonly IReadOnlyList<Release> Releases =
     [
+        new("1.19", new DateOnly(2026, 9, 21),
+        [
+            "Breast milk can be labelled morning or night — on a pumping session when you finish it, and on a bottle when you make one up. Always your call, never guessed from the clock: only you know which bag you reached for.",
+            "The fridge figure is split the same way, so the night milk has its own number. Correcting the stock now asks for morning and night separately.",
+            "Anything you did not label is counted on its own line rather than quietly assigned to one side."
+        ]),
+
         new("1.18", new DateOnly(2026, 9, 19),
         [
             "Fixed: nudging the stop time of a feed used to change how long the baby had fed for. The feeding time now stays put and the difference goes to the paused time instead, which is where it belonged.",

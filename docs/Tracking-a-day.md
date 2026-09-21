@@ -41,7 +41,9 @@ beside its time, or *still asleep* / *still feeding* while it is running.
 ## Bottles, either way
 
 **Bottle** opens a sheet: breast milk or formula, an amount in millilitres from the presets or
-typed in, and a note if you want one. **Save** writes it down at the time you tapped, which is the
+typed in, and a note if you want one. Choose breast milk and it also asks **which batch — morning
+or night** — if you label your bags; leave it blank if you do not, and the [fridge count](Pumping)
+keeps it on an unlabelled line rather than guessing. **Save** writes it down at the time you tapped, which is the
 quick way and still the usual one — most of the time you are recording a bottle rather than
 starting one, often one already half drunk.
 

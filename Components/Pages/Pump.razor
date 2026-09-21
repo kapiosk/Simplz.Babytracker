@@ -61,6 +61,20 @@
             }
         </div>
 
+        @* By batch, because the night figure is the one anybody is actually asking about.
+           Unlabelled only appears once there is some — a third line of zeros says nothing. *@
+        @if (stock.Batches.Any(b => b.Batch is not null && b.Any))
+        {
+            <div class="stock-batches">
+                @foreach (var line in stock.Batches.Where(b => b.Batch is not null || b.Any))
+                {
+                    <span class="batch">
+                        <b>@Figure(line.Ml)</b> @(line.Batch is { } side ? Display.Batch(side) : "unlabelled")
+                    </span>
+                }
+            </div>
+        }
+
         @if (stock.Ml < 0)
         {
             <div class="stock-warn">
@@ -192,13 +206,10 @@ else if (running is not null)
 
 @if (showStock)
 {
-    <AmountDialog Title="@(stock.IsKnown ? "Correct the stock" : "Set the stock")"
-                  IconName="pump" Css="breast"
-                  Label="What is in the fridge now (ml)"
-                  Hint="Everything before this stops counting. From here on it goes up as you pump and down as breast-milk bottles are given."
-                  Max="5000" Presets="@StockPresets" Initial="@(stock.IsKnown ? stock.Ml : null)"
-                  Required="true" SaveText="Set"
-                  OnCancel="() => showStock = false" OnSave="SaveStock" />
+    <StockDialog Correcting="stock.IsKnown"
+                 InitialMorning="stock.Of(MilkTime.Morning)?.Ml"
+                 InitialNight="stock.Of(MilkTime.Night)?.Ml"
+                 OnCancel="() => showStock = false" OnSave="SaveStock" />
 }
 
 @if (stopping is not null)
@@ -206,8 +217,8 @@ else if (running is not null)
     <AmountDialog Title="How much came out?" IconName="pump" Css="breast"
                   Label="Pumped (ml)"
                   Hint="@($"{Display.Duration(stoppedAfter)} on the pump. Leave it empty if you do not know yet — it can be filled in from the log later.")"
-                  Max="2000" Presets="@PumpPresets"
-                  CancelText="Skip" OnCancel="() => SaveStop(new AmountDialog.Entry(null, null))"
+                  Max="2000" Presets="@PumpPresets" AskBatch="true"
+                  CancelText="Skip" OnCancel="() => SaveStop(new AmountDialog.Entry(null, null, null))"
                   OnSave="SaveStop" />
 }
 
@@ -228,7 +239,6 @@ else if (running is not null)
     [Inject] private EventService Events { get; set; } = default!;
 
     private static readonly int[] PumpPresets = [30, 60, 90, 120, 150, 180];
-    private static readonly int[] StockPresets = [0, 100, 200, 300, 500, 750];
 
     private bool canEdit;
     private Baby? baby;
@@ -387,23 +397,23 @@ else if (running is not null)
             return;
         }
 
-        await Pumping.StopAsync(session.Id, entry.AmountMl, entry.Notes);
+        await Pumping.StopAsync(session.Id, entry.AmountMl, entry.Batch, entry.Notes);
         Toast(entry.AmountMl is > 0
             ? $"{entry.AmountMl} ml in {Display.Duration(stoppedAfter)}"
             : $"Session saved · {Display.Duration(stoppedAfter)}");
     }
 
-    private async Task SaveStock(AmountDialog.Entry entry)
+    private async Task SaveStock(StockDialog.Entry entry)
     {
         showStock = false;
 
-        if (!canEdit || baby is null || entry.AmountMl is null)
+        if (!canEdit || baby is null)
         {
             return;
         }
 
-        await Pumping.SetStockAsync(baby.Id, entry.AmountMl.Value, entry.Notes);
-        Toast($"Stock set to {entry.AmountMl} ml");
+        await Pumping.SetStockAsync(baby.Id, entry.MorningMl, entry.NightMl, entry.Notes);
+        Toast($"Stock set · {entry.MorningMl} morning, {entry.NightMl} night");
     }
 
     private void Edit(PumpEntry entry)
@@ -458,9 +468,12 @@ else if (running is not null)
 
     private static string Headline(PumpEntry entry) => entry.Kind switch
     {
+        PumpEntryKind.StockSet when entry.MilkTime is { } side =>
+            $"{Display.Batch(side).ToUpperInvariant()[0]}{Display.Batch(side)[1..]} stock set to {entry.AmountMl ?? 0} ml",
         PumpEntryKind.StockSet => $"Stock set to {entry.AmountMl ?? 0} ml",
         _ when entry.IsPaused => "Paused",
         _ when entry.IsRunning => "Pumping now",
+        _ when entry.AmountMl is > 0 && entry.MilkTime is { } b => $"Pumped {entry.AmountMl} ml · {Display.Batch(b)}",
         _ => entry.AmountMl is > 0 ? $"Pumped {entry.AmountMl} ml" : "Pumped",
     };
 

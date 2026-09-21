@@ -168,7 +168,7 @@ else
 {
     <BottleDialog Finishing="true"
                   FinishHint="@($"{Display.Duration(finishing.ElapsedAt(DateTime.UtcNow))} of feeding.")"
-                  InitialMilk="@(finishing.Milk ?? MilkKind.BreastMilk)"
+                  InitialMilk="@(finishing.Milk ?? MilkKind.BreastMilk)" InitialBatch="finishing.MilkTime"
                   InitialAmount="finishing.AmountMl" InitialNotes="@finishing.Notes"
                   OnCancel="() => finishing = null" OnSave="SaveFinishedBottle" />
 }
@@ -415,7 +415,7 @@ else
             return;
         }
 
-        await Events.LogBottleAsync(baby!.Id, entry.Milk, entry.AmountMl, entry.Notes);
+        await Events.LogBottleAsync(baby!.Id, entry.Milk, entry.AmountMl, entry.Batch, entry.Notes);
         Toast(entry.AmountMl is > 0 ? $"Bottle · {entry.AmountMl} ml" : "Bottle logged");
     }
 
@@ -428,7 +428,7 @@ else
             return;
         }
 
-        var result = await Events.StartBottleAsync(baby.Id, entry.Milk, entry.AmountMl, entry.Notes);
+        var result = await Events.StartBottleAsync(baby.Id, entry.Milk, entry.AmountMl, entry.Batch, entry.Notes);
 
         if (result.Ended is not { } ended)
         {
@@ -475,7 +475,7 @@ else
         }
 
         var spent = bottle.ElapsedAt(DateTime.UtcNow);
-        await Events.StopBottleAsync(bottle.Id, entry.Milk, entry.AmountMl, entry.Notes);
+        await Events.StopBottleAsync(bottle.Id, entry.Milk, entry.AmountMl, entry.Batch, entry.Notes);
 
         Toast(entry.AmountMl is > 0
             ? $"{entry.AmountMl} ml in {Display.Duration(spent)}"

@@ -14,7 +14,9 @@ A running session carries **Pause** and **Finish**. Pause is for whatever interr
 paused time does not count towards the session, so twenty-five minutes with five of them paused is
 recorded as twenty. The tile drains of colour while it is paused.
 
-When you finish, it asks how much came out. Tap a preset or type a figure. If you do not know yet —
+When you finish, it asks how much came out and **which batch it is — morning or night**. Tap a
+preset or type a figure, and tap a batch if you label your bags. The batch is never guessed from
+the clock; where the morning ends and the night begins is yours to decide. If you do not know yet —
 the bottle is still on the counter, or somebody needs a hand — tap **Skip** and fill it in later
 from the log; the session is still recorded, just without an amount.
 
@@ -36,13 +38,20 @@ screen. That is what the line at the bottom is reminding you of.
 Underneath the figure is the arithmetic — where the count started, how much has gone in, how much
 has come out — so the number can always explain itself rather than merely being asserted.
 
+Under that, the same count **split by batch**: how much morning milk, how much night milk. That is
+the figure that actually gets asked — *do I have enough night milk for tonight*. Anything that was
+pumped or given without a label sits on its own **unlabelled** line rather than being quietly
+assigned to one side, because a wrong guess there would corrupt the two numbers you care about.
+
 ## Correcting it
 
 Real fridges do not balance. Milk gets thrown away, a bottle gets made up and not logged, or you
 find a bag in the freezer from a fortnight ago.
 
-**Correct** (or **Set**, the first time) is for that: say what is actually there now. Everything
-before that moment stops counting, and the tally starts again from your figure. It shows up in the
+**Correct** (or **Set**, the first time) is for that: say what is actually there now, **morning
+and night separately**. Everything before that moment stops counting, and each side starts again
+from your figure. A correction is you saying it has all been counted, so the unlabelled line goes
+back to nothing — put a bag you are not sure of under whichever you would use it as. It shows up in the
 log as its own entry, so it is clear later why the count reads what it reads.
 
 Before the first session is ever logged, the stock reads *nothing pumped yet* rather than a figure.
