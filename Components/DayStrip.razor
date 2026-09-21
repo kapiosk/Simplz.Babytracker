@@ -78,6 +78,7 @@
                         <th>How often</th>
                         <th>ml</th>
                         <th>Change</th>
+                        <th>Over</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -90,6 +91,7 @@
                             <td>@Often(w)</td>
                             <td>@(w.AvgMl is { } ml ? $"{ml}" : "–")</td>
                             <td>@Delta(w.DeltaMinutes)</td>
+                            <td>@(w.MeasuredDays > 0 ? $"{w.MeasuredDays} days" : "–")</td>
                         </tr>
                     }
                 </tbody>
@@ -103,16 +105,21 @@
 
     private string Title => Shape.IsAverage ? "The average day" : "Today, so far";
 
-    private string Summary
-    {
-        get
-        {
-            if (Shape.Slots.Count == 0) return "";
-            var asleep = Shape.Windows.Where(w => w.State == DayState.Asleep).Sum(w => w.AvgMinutes);
-            var feeds = Shape.Windows.Count(w => w.State == DayState.Feeding);
-            return $"{Display.Duration(TimeSpan.FromMinutes(asleep))} asleep · {feeds} {(feeds == 1 ? "feed" : "feeds")}";
-        }
-    }
+    /// <summary>
+    /// How much of a day goes on each, per day. Not the sum of the windows' lengths: those are
+    /// stretch lengths that overlap wherever the average separates two windows a real day runs
+    /// together, and adding them overstated the sleep by well over an hour. Counting per day
+    /// instead makes this agree with the Sleep chart underneath, which is the check.
+    ///
+    /// The count of feeding windows is gone with it. It read as "feeds a day" and was nothing
+    /// of the sort — feeds at a wandering hour never win a half-hour, so they never become a
+    /// window, and the number sat well under what anybody would count.
+    /// </summary>
+    private string Summary =>
+        Shape.Slots.Count == 0
+            ? ""
+            : $"{Display.Duration(TimeSpan.FromMinutes(Shape.AvgAsleepMinutes))} asleep · "
+              + $"{Display.Duration(TimeSpan.FromMinutes(Shape.AvgFeedingMinutes))} feeding";
 
     /// <summary>One drawn piece of a window, clipped to a twelve-hour row.</summary>
     private sealed record Segment(DayWindow Window, int Left, int Slots, string? LabelAbove, string? DeltaBelow);

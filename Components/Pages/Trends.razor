@@ -15,10 +15,6 @@
 
 <RangePicker DefaultDays="7" OnChanged="OnRange" />
 
-@* The lead visual: what a day looks like, before the seven measures underneath say how much
-   of each there was. *@
-<DayStrip Shape="shape" />
-
 @* One bar a day over a range, and one bar an hour when the range is a single day — a chart of
    thirty days has a shape worth seeing, and a chart of one day has exactly one bar and says
    nothing. Same chart either way; only what a bar covers changes. *@
@@ -53,6 +49,12 @@
 
 <BarChart Label="Poops" Css="poop" IconName="poop" Bucket="@bucket"
           Total="@($"{(int)poops.Sum(p => p.Value)}")" Points="poops" />
+
+@* Last rather than first. The bars answer how much, which is what the page is opened for;
+   this answers what the day looks like, which is worth more once the figures above have been
+   read — and its sleep figure is the same figure as the Sleep chart's, so the two sit in
+   sight of each other. *@
+<DayStrip Shape="shape" />
 
 <p class="login-note">
     @if (EveryBarLabelled)

@@ -30,9 +30,22 @@ public sealed record DaySlot(int Index, DayState State, int DaysAgreeing, int Da
 /// agreed with it. 1.0 is every day, every half-hour.
 /// </param>
 /// <param name="AvgMl">For a feed: the mean millilitres of the bottles given inside it.</param>
-/// <param name="AvgMinutes">
+/// <param name="AvgRunMinutes">
 /// How long this stretch actually lasted, on average — measured on each day as the real run of
-/// this state around the window, not just the part inside it.
+/// this state around the window, not merely the part inside it. That is what makes the change
+/// figure able to see a night growing past its window.
+///
+/// It is emphatically <em>not</em> this window's share of the day, and these must never be
+/// summed. On a day where two windows the average keeps apart are really one unbroken stretch,
+/// both measure that same stretch and report it — correctly, since each is answering "how long
+/// is the stretch you are in at this hour". Adding them counts those minutes twice. For how much
+/// of a day a state takes up, use <see cref="DayShapeResult.AvgAsleepMinutes"/>, which is
+/// measured per day and cannot overlap.
+/// </param>
+/// <param name="MeasuredDays">
+/// How many days the stretch could actually be measured on. A run reaching the edge of the
+/// range, or hours not yet lived, is unknown rather than short, so it is left out — and a
+/// change resting on very few days is worth knowing about.
 /// </param>
 /// <param name="DeltaMinutes">
 /// The later half of the range against the earlier half, in minutes a day. Null when either
@@ -40,17 +53,24 @@ public sealed record DaySlot(int Index, DayState State, int DaysAgreeing, int Da
 /// </param>
 public sealed record DayWindow(
     DayState State, TimeSpan Start, TimeSpan End, double Presence,
-    int? AvgMl, int AvgMinutes, int? DeltaMinutes)
+    int? AvgMl, int AvgRunMinutes, int MeasuredDays, int? DeltaMinutes)
 {
     public TimeSpan Length => End - Start;
 
     public bool WrapsMidnight => End > TimeSpan.FromHours(24);
 }
 
+/// <param name="AvgAsleepMinutes">
+/// Minutes a day spent asleep, averaged over the days in the range. Measured a day at a time
+/// over every half-hour, so it counts each minute once and agrees with the sleep drawn on the
+/// bar chart below it. The windows' own lengths cannot be summed to get here — see
+/// <see cref="DayWindow.AvgRunMinutes"/>.
+/// </param>
 public sealed record DayShapeResult(
-    IReadOnlyList<DaySlot> Slots, IReadOnlyList<DayWindow> Windows, int DaysCounted, bool IsAverage)
+    IReadOnlyList<DaySlot> Slots, IReadOnlyList<DayWindow> Windows, int DaysCounted, bool IsAverage,
+    int AvgAsleepMinutes, int AvgFeedingMinutes)
 {
-    public static readonly DayShapeResult Empty = new([], [], 0, false);
+    public static readonly DayShapeResult Empty = new([], [], 0, false, 0, 0);
 }
 
 /// <summary>
@@ -172,8 +192,41 @@ public static class DayShape
             slots.Add(new DaySlot(s, best, bestVotes, counted));
         }
 
+        // How much of a day each state takes up: summed per day over the half-hours that day
+        // reached, then averaged. Every minute lands in exactly one half-hour of one day, so
+        // this counts each of them once — which summing the windows does not.
+        var asleepPerDay = new List<int>();
+        var feedingPerDay = new List<int>();
+        for (var d = 0; d < days.Count; d++)
+        {
+            var a = 0;
+            var f = 0;
+            var any = false;
+
+            for (var s = 0; s < SlotsPerDay; s++)
+            {
+                if (!grid.Counted(d, s))
+                {
+                    continue;
+                }
+
+                any = true;
+                a += grid.Minutes(d, s, DayState.Asleep);
+                f += grid.Minutes(d, s, DayState.Feeding);
+            }
+
+            if (any)
+            {
+                asleepPerDay.Add(a);
+                feedingPerDay.Add(f);
+            }
+        }
+
         var windows = Windows(slots, grid, events);
-        return new DayShapeResult(slots, windows, days.Count, days.Count > 1);
+        return new DayShapeResult(
+            slots, windows, days.Count, days.Count > 1,
+            asleepPerDay.Count == 0 ? 0 : (int)Math.Round(asleepPerDay.Average()),
+            feedingPerDay.Count == 0 ? 0 : (int)Math.Round(feedingPerDay.Average()));
     }
 
     private static List<DayWindow> Windows(List<DaySlot> slots, Grid grid, IReadOnlyList<BabyEvent> events)
@@ -270,7 +323,7 @@ public static class DayShape
                 state,
                 TimeSpan.FromMinutes(first * SlotMinutes),
                 TimeSpan.FromMinutes((last + 1) * SlotMinutes),
-                presence, avgMl, avgMinutes, delta));
+                presence, avgMl, avgMinutes, perDay.Count, delta));
         }
 
         // Reading order is the day as it is lived: from waking, round to the night. So the
