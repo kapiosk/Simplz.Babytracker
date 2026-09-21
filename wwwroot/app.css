@@ -1136,6 +1136,64 @@ body { padding-top: var(--circuit-banner-h, 0px); }
     color: var(--text-dim);
 }
 
+/* ---------- the average day ---------- */
+
+/* Two twelve-hour strips. The strip is the plot; the awake stretches are the surface showing
+   through, so the fills are only ever sleep and feeding. Marks stay thin (18px) per the mark
+   specs, ends rounded, and a 2px surface gap separates touching windows rather than a border. */
+.dayshape .strip-block { position: relative; margin-top: .2rem; }
+.dayshape .strip-block + .strip-block { margin-top: .9rem; }
+
+.dayshape .strip {
+    display: flex;
+    gap: 2px;
+    height: 18px;
+}
+
+.dayshape .seg { flex: 0 0 auto; flex-basis: 0; min-width: 0; border-radius: 4px; }
+.dayshape .seg.awake { background: transparent; }
+.dayshape .seg.asleep { background: var(--sleep); }
+.dayshape .seg.feeding { background: var(--breast); }
+
+/* A hairline baseline under the strip, the one rule drawn. */
+.dayshape .strip { border-bottom: 1px solid var(--border); padding-bottom: 3px; box-sizing: content-box; }
+
+/* Labels ride above the strip and deltas below it, each anchored to its window and centred on
+   it. Text wears text ink, never the fill colour. */
+.dayshape .strip-labels, .dayshape .strip-deltas, .dayshape .strip-axis { position: relative; height: 1rem; }
+.dayshape .strip-labels { height: 1.05rem; }
+.dayshape .strip-labels .lbl,
+.dayshape .strip-deltas .delta,
+.dayshape .strip-axis span {
+    position: absolute;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font-size: .68rem;
+    line-height: 1;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+}
+.dayshape .strip-labels .lbl { top: 0; color: var(--text); font-weight: 700; }
+.dayshape .strip-deltas .delta { top: .15rem; font-weight: 700; color: var(--text); }
+.dayshape .strip-axis span { top: .1rem; }
+.dayshape .strip-axis span:first-child { transform: none; }
+.dayshape .strip-axis span:last-child { transform: translateX(-100%); }
+
+.dayshape .strip-legend {
+    display: flex;
+    gap: 1rem;
+    margin-top: .7rem;
+    font-size: .75rem;
+    color: var(--text-dim);
+}
+.dayshape .sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; vertical-align: -1px; margin-right: .3rem; }
+.dayshape .sw.asleep { background: var(--sleep); }
+.dayshape .sw.feeding { background: var(--breast); }
+.dayshape .sw.awake { background: transparent; border: 1px solid var(--border); }
+
+.dayshape table.windows { margin-top: .3rem; }
+.dayshape table.windows td, .dayshape table.windows th { padding: .35rem .3rem; }
+
 /* ---------- pumping ---------- */
 
 /* The headline figure on its own card. Pumped milk is breast milk, so it borrows the breast

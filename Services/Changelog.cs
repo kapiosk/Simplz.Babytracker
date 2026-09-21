@@ -17,6 +17,13 @@ public static class Changelog
 
     public static readonly IReadOnlyList<Release> Releases =
     [
+        new("1.20", new DateOnly(2026, 9, 21),
+        [
+            "Trends now opens with the shape of an average day: two twelve-hour strips with sleep drawn as a band, feeds as notches on it, and the awake stretches left clear. Each half-hour shows what the baby was most often doing at that time across the range you have picked.",
+            "Consistent feeds carry their average millilitres. Long windows carry a change figure — how many minutes a day longer or shorter they have become, comparing the later half of the range with the earlier half — and Every window lists all of them.",
+            "On Today it shows the day as it actually was, up to now."
+        ]),
+
         new("1.19", new DateOnly(2026, 9, 21),
         [
             "Breast milk can be labelled morning or night — on a pumping session when you finish it, and on a bottle when you make one up. Always your call, never guessed from the clock: only you know which bag you reached for.",

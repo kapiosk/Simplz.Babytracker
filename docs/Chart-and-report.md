@@ -53,8 +53,33 @@ so it shows a dash rather than a zero.
 
 ## Trends
 
-The same measures as the report, drawn instead of listed, one small bar chart each: sleep, breast
-feeds, bottles, time on bottles, millilitres pumped, time pumping, and poops.
+Trends opens with **the average day**, then the same measures as the report drawn as bars, one
+small chart each: sleep, breast feeds, bottles, time on bottles, millilitres pumped, time pumping,
+and poops.
+
+### The average day
+
+Two strips, midnight to noon and noon to midnight. For each half-hour it shows what the baby was
+**most often doing at that time** across the days in the range: **sleep** as a solid band,
+**feeding** as short notches, and **awake** left clear. A night that runs past midnight appears at
+the end of the second strip and again at the start of the first — the same sleep, drawn in two
+pieces because the clock is a line here rather than a circle.
+
+Feeds that happen most days carry their **average millilitres** above them (bottles only — a
+breast feed has no figure). Long windows carry a **change** underneath: how many minutes a day
+longer or shorter that stretch has become, comparing the later half of the range with the earlier
+half. `+25m` under the night means the baby is sleeping about twenty-five minutes a day longer in
+the second half of the week than the first. Short windows send theirs to the table.
+
+**Every window** under the strip lists all of them — from, to, what, how many of the days it was
+there, the average millilitres, and the change — so nothing depends on fitting a label on.
+
+The change needs at least two days on each side to say anything, so over three days or fewer it
+shows a dash rather than a guess. On **Today** there is no average: it shows the day as it
+actually was, up to now, and the hours that have not happened yet are simply not counted.
+
+The average uses the wall clock, pauses included. A forty-minute bottle with twenty paused is still
+forty minutes of the day spent being fed; this is the shape of the day, not the timer.
 
 Bottles and pumping each get two charts — how much, and how long — sitting next to each other and
 sharing a colour. The colour is grouping the two questions about one thing there, rather than

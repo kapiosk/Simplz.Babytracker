@@ -1,0 +1,217 @@
+@* The shape of the average day: two twelve-hour strips, sleep drawn as a band, feeds as short
+   notches on it, awake as the surface showing through.
+
+   Emphasis rather than three colours. Awake is the background, so only two hues ever touch —
+   the sleep indigo and the feed pink — and those two sit at ΔE 7.8 for a protanope, which the
+   palette rules allow only with a second encoding. The second encoding is the shape itself:
+   sleep is a long band, a feed is a short notch with a figure over it, and both are named in
+   the legend and listed in the table. Nothing here is told apart by colour alone.
+
+   Deltas sit under the strip and only on windows long enough to hold one; every window's delta
+   is in the table, so nothing is gated on fitting. *@
+
+<div class="card chart-card dayshape">
+    <div class="chart-head">
+        <span class="k"><span class="ico sleep"><Icon Name="timer" /></span> @Title</span>
+        <span class="v">@Summary</span>
+    </div>
+
+    @if (Shape.Slots.Count == 0)
+    {
+        <div class="chart-empty">Nothing recorded in this range.</div>
+    }
+    else
+    {
+        @for (var row = 0; row < 2; row++)
+        {
+            var from = row * 12 * 60;
+            var to = from + 12 * 60;
+            var segments = Segments(from, to);
+
+            <div class="strip-block">
+                <div class="strip-labels">
+                    @foreach (var seg in segments.Where(s => s.LabelAbove is not null))
+                    {
+                        <span class="lbl" style="left:@Pct(seg.Left + seg.Slots / 2.0)%">@seg.LabelAbove</span>
+                    }
+                </div>
+
+                <div class="strip" role="img" aria-label="@RowDescription(from, to)">
+                    @foreach (var seg in segments)
+                    {
+                        <div class="seg @DayShape.Label(seg.Window.State)"
+                             style="flex-grow:@seg.Slots"
+                             title="@SegmentTitle(seg.Window)"></div>
+                    }
+                </div>
+
+                <div class="strip-deltas">
+                    @foreach (var seg in segments.Where(s => s.DeltaBelow is not null))
+                    {
+                        <span class="delta" style="left:@Pct(seg.Left + seg.Slots / 2.0)%">@seg.DeltaBelow</span>
+                    }
+                </div>
+
+                <div class="strip-axis">
+                    @for (var h = 0; h <= 12; h += 3)
+                    {
+                        <span style="left:@(h * 100.0 / 12)%">@AxisTick(row * 12 + h)</span>
+                    }
+                </div>
+            </div>
+        }
+
+        <div class="strip-legend">
+            <span><i class="sw asleep"></i> asleep</span>
+            <span><i class="sw feeding"></i> feeding</span>
+            <span><i class="sw awake"></i> awake</span>
+        </div>
+
+        <details class="chart-numbers">
+            <summary>Every window</summary>
+            <table class="grid windows">
+                <thead>
+                    <tr>
+                        <th>From</th>
+                        <th>To</th>
+                        <th>What</th>
+                        <th>How often</th>
+                        <th>ml</th>
+                        <th>Change</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var w in Shape.Windows)
+                    {
+                        <tr>
+                            <td>@DayShape.Clock(w.Start)</td>
+                            <td>@DayShape.Clock(w.End)</td>
+                            <td>@DayShape.Label(w.State)</td>
+                            <td>@Often(w)</td>
+                            <td>@(w.AvgMl is { } ml ? $"{ml}" : "–")</td>
+                            <td>@Delta(w.DeltaMinutes)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </details>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public DayShapeResult Shape { get; set; } = DayShapeResult.Empty;
+
+    private string Title => Shape.IsAverage ? "The average day" : "Today, so far";
+
+    private string Summary
+    {
+        get
+        {
+            if (Shape.Slots.Count == 0) return "";
+            var asleep = Shape.Windows.Where(w => w.State == DayState.Asleep).Sum(w => w.AvgMinutes);
+            var feeds = Shape.Windows.Count(w => w.State == DayState.Feeding);
+            return $"{Display.Duration(TimeSpan.FromMinutes(asleep))} asleep · {feeds} {(feeds == 1 ? "feed" : "feeds")}";
+        }
+    }
+
+    /// <summary>One drawn piece of a window, clipped to a twelve-hour row.</summary>
+    private sealed record Segment(DayWindow Window, int Left, int Slots, string? LabelAbove, string? DeltaBelow);
+
+    /// <summary>
+    /// The windows that touch a row, cut to it. Positions are in slots from the row start, so
+    /// a night sleep running past midnight appears at the end of the second row and again at the
+    /// start of the first — the same window, drawn twice.
+    /// </summary>
+    private List<Segment> Segments(int fromMinute, int toMinute)
+    {
+        var slotsPerRow = (toMinute - fromMinute) / DayShape.SlotMinutes;
+        var result = new List<Segment>();
+
+        // Labels are placed greedily by how consistently the feed is there, and a second label
+        // never lands within two slots of one already placed — the figure is measured wider
+        // than the notch it sits over, and two of them side by side become one unreadable one.
+        var placedLabels = new List<int>();
+
+        foreach (var w in Shape.Windows.OrderByDescending(w => w.State == DayState.Feeding ? w.Presence : -1))
+        {
+            // A window through midnight is drawn on both rows. Its figures are drawn once, on
+            // whichever piece is longer, so a night does not announce the same change twice.
+            var pieces = Unwrap(w).ToList();
+            var longest = pieces.MaxBy(p => p.End - p.Start);
+
+            foreach (var (start, end) in pieces)
+            {
+                var a = Math.Max(start, fromMinute);
+                var b = Math.Min(end, toMinute);
+                if (b <= a)
+                {
+                    continue;
+                }
+
+                var left = (a - fromMinute) / DayShape.SlotMinutes;
+                var slots = (b - a) / DayShape.SlotMinutes;
+                var carries = pieces.Count == 1 || (start, end) == longest;
+
+                string? label = null;
+                if (carries && w.State == DayState.Feeding && w.AvgMl is { } ml && w.Presence >= 0.5
+                    && placedLabels.All(p => Math.Abs(p - left) >= 3))
+                {
+                    label = $"{ml} ml";
+                    placedLabels.Add(left);
+                }
+
+                // Long windows carry their own delta; short ones send it to the table.
+                var delta = carries && w.DeltaMinutes is { } dm && dm != 0 && slots >= 4 ? Delta(dm) : null;
+
+                result.Add(new Segment(w, left, slots, label, delta));
+            }
+        }
+
+        return result.OrderBy(s => s.Left).ToList();
+    }
+
+    /// <summary>A window past midnight as the two ranges it occupies on the clock.</summary>
+    private static IEnumerable<(int Start, int End)> Unwrap(DayWindow w)
+    {
+        var start = (int)w.Start.TotalMinutes;
+        var end = (int)w.End.TotalMinutes;
+        if (end <= 24 * 60)
+        {
+            yield return (start, end);
+        }
+        else
+        {
+            yield return (start, 24 * 60);
+            yield return (0, end - 24 * 60);
+        }
+    }
+
+    /// <summary>"00:00" … "24:00": two digits like every other clock in the app, and the day
+    /// ends at twenty-four rather than starting again at nought.</summary>
+    private static string AxisTick(int hour) => $"{hour:00}:00";
+
+    private static string Pct(double slotsFromLeft) =>
+        (slotsFromLeft * 100.0 / 24).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+
+    private static string Delta(int? minutes) => minutes switch
+    {
+        null => "–",
+        0 => "same",
+        > 0 => $"+{minutes}m",
+        _ => $"−{-minutes}m"
+    };
+
+    private string Often(DayWindow w) =>
+        Shape.IsAverage ? $"{Math.Round(w.Presence * Shape.DaysCounted)} of {Shape.DaysCounted} days" : "today";
+
+    private string SegmentTitle(DayWindow w) =>
+        $"{DayShape.Clock(w.Start)}–{DayShape.Clock(w.End)} {DayShape.Label(w.State)}"
+        + (w.AvgMl is { } ml ? $", about {ml} ml" : "")
+        + (w.DeltaMinutes is { } d ? $", {Delta(d)} a day" : "");
+
+    private string RowDescription(int fromMinute, int toMinute) =>
+        $"{DayShape.Clock(TimeSpan.FromMinutes(fromMinute))} to {DayShape.Clock(TimeSpan.FromMinutes(toMinute))}: "
+        + string.Join("; ", Shape.Windows
+            .Where(w => Unwrap(w).Any(r => r.Start < toMinute && r.End > fromMinute))
+            .Select(w => $"{DayShape.Label(w.State)} {DayShape.Clock(w.Start)} to {DayShape.Clock(w.End)}"));
+}

@@ -15,6 +15,10 @@
 
 <RangePicker DefaultDays="7" OnChanged="OnRange" />
 
+@* The lead visual: what a day looks like, before the seven measures underneath say how much
+   of each there was. *@
+<DayStrip Shape="shape" />
+
 @* One bar a day over a range, and one bar an hour when the range is a single day — a chart of
    thirty days has a shape worth seeing, and a chart of one day has exactly one bar and says
    nothing. Same chart either way; only what a bar covers changes. *@
@@ -82,6 +86,8 @@
     /// </summary>
     private bool EveryBarLabelled => sleep.Count is > 0 and <= BarChart.LabelEveryUpTo;
 
+    private DayShapeResult shape = DayShapeResult.Empty;
+
     private List<BarChart.Point> sleep = [];
     private List<BarChart.Point> feeds = [];
     private List<BarChart.Point> bottles = [];
@@ -118,6 +124,13 @@
 
         var events = await Events.GetRangeAsync(baby.Id, fromUtc, toUtc);
         var pumps = await Pumping.GetRangeAsync(baby.Id, fromUtc, toUtc);
+
+        // The strip needs the day before as well: the sleep that covers the first morning began
+        // the previous evening, and a range query by start time would leave it out and draw
+        // that morning as awake. Fetched separately so the hourly buckets below are not fed a
+        // day that is not theirs.
+        var forShape = await Events.GetRangeAsync(baby.Id, fromUtc.AddDays(-1), toUtc);
+        shape = DayShape.Build(forShape, fromDate, toDate, DateTime.UtcNow);
 
         if (fromDate == toDate)
         {
