@@ -22,9 +22,10 @@
         }
 
         <div class="field">
-            <label for="ms-date">When</label>
-            <input id="ms-date" type="date" max="@Today" value="@on" @onchange="SetDate" />
-            <div class="hint-line">@AgeHint</div>
+            <label for="ms-date">@(Backfill ? "Roughly when?" : "When")</label>
+            <input id="ms-date" type="date" max="@Today" min="@(BornOn?.ToString("yyyy-MM-dd"))"
+                   value="@on" @onchange="SetDate" />
+            <div class="hint-line">@AgeHintOrPrompt</div>
         </div>
 
         <div class="field">
@@ -38,7 +39,8 @@
                 <button type="button" class="btn danger" @onclick="() => OnRemove.InvokeAsync(Existing.Id)">Remove</button>
             }
             <button type="button" class="btn" @onclick="() => OnCancel.InvokeAsync()">Cancel</button>
-            <button type="button" class="btn primary" disabled="@(IsOwn && string.IsNullOrWhiteSpace(title))"
+            <button type="button" class="btn primary"
+                    disabled="@((IsOwn && string.IsNullOrWhiteSpace(title)) || string.IsNullOrEmpty(on))"
                     @onclick="Save">Save</button>
         </div>
     </div>
@@ -56,6 +58,14 @@
 
     /// <summary>When the baby was born, so the sheet can say how old they were.</summary>
     [Parameter] public DateOnly? BornOn { get; set; }
+
+    /// <summary>
+    /// Filling in one from earlier. The date starts empty rather than on today, because today
+    /// is certainly wrong for something that happened months ago, and a wrong default saved
+    /// without a second look would be the app inventing a date. Whatever goes in is the
+    /// parent's own best guess, which is the most this can honestly hold.
+    /// </summary>
+    [Parameter] public bool Backfill { get; set; }
 
     [Parameter] public EventCallback OnCancel { get; set; }
     [Parameter] public EventCallback<Entry> OnSave { get; set; }
@@ -84,18 +94,36 @@
         }
     }
 
+    private string AgeHintOrPrompt
+    {
+        get
+        {
+            var hint = AgeHint;
+            return hint.Length == 0 && Backfill && string.IsNullOrEmpty(on)
+                ? "A rough date is fine — your best guess is all this needs."
+                : hint;
+        }
+    }
+
     protected override void OnInitialized()
     {
         title = Existing?.Title ?? "";
         notes = Existing?.Notes;
-        on = (Existing?.ReachedOn ?? DateOnly.FromDateTime(DateTime.Now)).ToString("yyyy-MM-dd");
+        on = Existing is { } row
+            ? row.ReachedOn.ToString("yyyy-MM-dd")
+            : Backfill ? "" : DateOnly.FromDateTime(DateTime.Now).ToString("yyyy-MM-dd");
     }
 
     private void SetDate(ChangeEventArgs e) => on = e.Value?.ToString() ?? on;
 
     private Task Save()
     {
-        var day = DateOnly.TryParse(on, out var parsed) ? parsed : DateOnly.FromDateTime(DateTime.Now);
+        if (!DateOnly.TryParse(on, out var day))
+        {
+            // Save is disabled without one; this is the belt to that braces.
+            return Task.CompletedTask;
+        }
+
         return OnSave.InvokeAsync(new Entry(
             day, title.Trim(), string.IsNullOrWhiteSpace(notes) ? null : notes.Trim()));
     }

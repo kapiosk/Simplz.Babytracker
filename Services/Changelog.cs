@@ -17,6 +17,12 @@ public static class Changelog
 
     public static readonly IReadOnlyList<Release> Releases =
     [
+        new("1.23", new DateOnly(2026, 10, 9),
+        [
+            "Milestones has a From earlier list: the ones whose usual range has already gone by and were never recorded, so you can fill them in after the fact. A rough date is fine.",
+            "Around now only shows what is around now. Before, a baby a few months old with little recorded was still being offered the newborn ones there."
+        ]),
+
         new("1.22", new DateOnly(2026, 10, 9),
         [
             "Add a birth date on Babies and the age appears beside the date in the header — days for the first fortnight, then weeks, then months.",

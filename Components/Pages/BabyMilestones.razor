@@ -67,6 +67,31 @@ else
         </div>
     }
 
+    @if (canEdit && Earlier.Count > 0)
+    {
+        @* The ones whose range has closed and that were never written down. Never framed as
+           missed — most of these happened and simply did not make it into the app. *@
+        <div class="section-title"><span>From earlier</span></div>
+        <div class="hint-line" style="margin-top:-.25rem;margin-bottom:.5rem">
+            Not recorded yet. Fill in any you remember — a rough date is fine.
+        </div>
+        <div class="card">
+            <ul class="events">
+                @foreach (var g in Earlier)
+                {
+                    <li class="event" @key="g.Key">
+                        <span class="ico @AreaCss(g.Area)"><Icon Name="@AreaIcon(g.Area)" /></span>
+                        <div class="body">
+                            <div class="name">@g.Title</div>
+                            <div class="meta">@Milestones.When(g, null)</div>
+                        </div>
+                        <button type="button" class="btn small" @onclick="() => Record(g)">Record</button>
+                    </li>
+                }
+            </ul>
+        </div>
+    }
+
     <div class="section-title">
         <span>Reached</span>
         @if (canEdit)
@@ -148,7 +173,7 @@ else
 @if (dialog is not null)
 {
     <MilestoneDialog FromGuide="dialog.Guide" Existing="dialog.Existing" IsOwn="dialog.IsOwn"
-                     BornOn="baby?.BornOn"
+                     Backfill="dialog.Backfill" BornOn="baby?.BornOn"
                      OnCancel="() => dialog = null" OnSave="SaveDialog" OnRemove="RemoveDialog" />
 }
 
@@ -164,7 +189,7 @@ else
     private Baby? baby;
     private List<Milestone> recorded = [];
 
-    private sealed record Pending(MilestoneGuide? Guide, Milestone? Existing, bool IsOwn);
+    private sealed record Pending(MilestoneGuide? Guide, Milestone? Existing, bool IsOwn, bool Backfill = false);
     private Pending? dialog;
 
     private string? toast;
@@ -175,6 +200,8 @@ else
     private int? AgeWeeks => baby?.BornOn is { } born ? Display.AgeWeeks(born, Today) : null;
 
     private List<MilestoneGuide> NextUp => Milestones.NextUp(recorded, AgeWeeks).ToList();
+
+    private List<MilestoneGuide> Earlier => Milestones.Earlier(recorded, AgeWeeks).ToList();
 
     protected override async Task OnInitializedAsync()
     {
@@ -236,7 +263,11 @@ else
     {
         if (canEdit)
         {
-            dialog = new Pending(g, recorded.FirstOrDefault(m => m.Key == g.Key), false);
+            var existing = recorded.FirstOrDefault(m => m.Key == g.Key);
+
+            // Recording one whose range has closed is filling in the past: the sheet asks for a
+            // rough date rather than offering today, which would be wrong by months.
+            dialog = new Pending(g, existing, false, existing is null && Milestones.HasPassed(g, AgeWeeks));
         }
     }
 

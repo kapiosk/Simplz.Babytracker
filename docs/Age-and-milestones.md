@@ -17,10 +17,14 @@ switches the age too.
 Tap the age to open them. That and the link on **Babies** are the two ways in; there is no sixth
 tab, because this is something looked at now and then rather than at every feed.
 
-Three parts:
+Four parts:
 
 - **Around now** — the handful from the guide whose range is open, or about to be, and which have
   not been recorded yet. Tap **Record** on one and it asks when.
+- **From earlier** — the ones whose range has already gone by without being recorded, for filling
+  in after the fact. The date starts empty rather than on today, because today is the one answer
+  that is certainly wrong; a rough guess is fine. This only appears once a birth date is set, and
+  only while something is left in it.
 - **Reached** — what has been recorded, newest first, each with **how old they were on the day it
   happened**. That is the part worth having: *first smile, five weeks old*.
 - **The whole guide** — all of them, in the order a baby meets them, with the ones already
