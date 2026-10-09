@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Checks that drive the services directly against a throwaway SQLite file.
+
+       A console project rather than a test framework, on purpose: it runs with one command,
+       needs no runner or adapter, reports in plain sentences, and exits non-zero on any
+       failure so a script or a CI step can stop on it. See README.md beside this file. -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Simplz.Babytracker.Checks</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Simplz.Babytracker.csproj" />
+  </ItemGroup>
+
+</Project>

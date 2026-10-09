@@ -5,6 +5,12 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+
+    <!-- The checks live under tests/ as a project of their own. This project sits at the root
+         with the default globs, which would otherwise pull every .cs file under tests/ into the
+         app itself — and the Dockerfile is a bare `dotnet publish` here, so the build on the Pi
+         would fail on it. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);tests/**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>

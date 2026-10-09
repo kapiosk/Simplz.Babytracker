@@ -161,19 +161,44 @@ public sealed class Milestones(IDbContextFactory<AppDbContext> factory, ILogger<
     }
 
     /// <summary>
-    /// The handful worth offering next: the ones not yet recorded whose range is open now or
-    /// has opened already, earliest first. The whole guide is still there to scroll; this is
-    /// only what saves scrolling to it.
+    /// The handful worth offering now: not yet recorded, with a range that is open at this age
+    /// or opens within the next month. Earliest first.
+    ///
+    /// Only ones whose range is still open. This used to take anything whose range had started,
+    /// which for an older baby with little recorded meant the newborn ones — smiling, following
+    /// a face — filled every place, and the ones actually around now never appeared. Those
+    /// older ones now have a section of their own: see <see cref="Earlier"/>.
     /// </summary>
     public static IEnumerable<MilestoneGuide> NextUp(
         IReadOnlyList<Milestone> reached, int? ageWeeks, int take = 4)
     {
-        var done = reached.Where(m => m.Key is not null).Select(m => m.Key!).ToHashSet();
-        var candidates = Guide.Where(g => !done.Contains(g.Key));
+        var candidates = NotRecorded(reached);
 
         return ageWeeks is { } w
-            ? candidates.Where(g => g.FromWeeks <= w + 4).OrderBy(g => g.FromWeeks).Take(take)
+            ? candidates.Where(g => g.ToWeeks >= w && g.FromWeeks <= w + 4).OrderBy(g => g.FromWeeks).Take(take)
             : candidates.Take(take);
+    }
+
+    /// <summary>
+    /// The ones from earlier that were never written down: not recorded, and the range already
+    /// closed. For filling in after the fact — a first smile that happened, was noticed, and
+    /// never made it into the app.
+    ///
+    /// Without a birth date there is no "earlier" to speak of, so this is empty and the whole
+    /// guide is the place to find them.
+    /// </summary>
+    public static IEnumerable<MilestoneGuide> Earlier(IReadOnlyList<Milestone> reached, int? ageWeeks) =>
+        ageWeeks is { } w
+            ? NotRecorded(reached).Where(g => g.ToWeeks < w).OrderBy(g => g.FromWeeks)
+            : [];
+
+    /// <summary>Whether a range has already closed at this age — and so recording it is a backfill.</summary>
+    public static bool HasPassed(MilestoneGuide g, int? ageWeeks) => ageWeeks is { } w && g.ToWeeks < w;
+
+    private static IEnumerable<MilestoneGuide> NotRecorded(IReadOnlyList<Milestone> reached)
+    {
+        var done = reached.Where(m => m.Key is not null).Select(m => m.Key!).ToHashSet();
+        return Guide.Where(g => !done.Contains(g.Key));
     }
 
     private static string? Clean(string? notes) =>

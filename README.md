@@ -256,11 +256,24 @@ notice to appear.
 | `Services/Credentials.cs` | Which password lets you in: stored and hashed if it has been changed, from the configuration if not |
 | `Components/Pages/` | `Home.razor` (the buttons), `Chart.razor`, `Report.razor`, `Trends.razor`, `ManageBabies.razor`, `Password.razor`, `WhatsNew.razor`, `Login.razor` |
 | `Components/` | `EventList`, `BottleDialog`, `EditEventDialog`, `TimeField`, `RangePicker`, `BarChart`, `OutputMarks`, `CircuitHeartbeat`, `Icon` |
+| `tests/Simplz.Babytracker.Checks/` | The checks — see [Checking a change](#checking-a-change) |
 | `wwwroot/` | `app.css`, `theme.js`, `circuit-watchdog.js`, `media-upload.js`, `whats-new.js`, `manifest.webmanifest`, `service-worker.js`, `offline.html`, icons |
 
 Times are stored in UTC and rendered in the server's local timezone (`TZ`). Everything that has to
 survive a rebuild is under `/data`: the database, the attachments in `media/`, and the keys that
 sign the cookie in `keys/`.
+
+## Checking a change
+
+```bash
+dotnet run --project tests/Simplz.Babytracker.Checks
+```
+
+Around two hundred checks that drive the real services against a fresh, migrated SQLite file:
+the sleep floor, bottles and pauses, editing a stop time, the fridge ledger and its batches, how
+ages and times are said, the average day, and the milestones. It prints a line per check and exits
+non-zero on any failure. Run it before a deploy; [its README](tests/Simplz.Babytracker.Checks/README.md)
+says how to add to it.
 
 ## Deploying a change
 
