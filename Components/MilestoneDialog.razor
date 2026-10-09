@@ -1,0 +1,104 @@
+@* Recording a milestone: what, when, and anything worth remembering about it.
+
+   The date defaults to today but is the first thing on the sheet, because the common case is
+   writing down something noticed a few days ago — a first smile is rarely logged the moment it
+   happens. The day it happened is what the age beside it is worked out from. *@
+
+<div class="sheet-backdrop" @onclick="() => OnCancel.InvokeAsync()">
+    <div class="sheet" @onclick:stopPropagation="true">
+        <h2><span class="ico sleep"><Icon Name="baby" /></span> @(IsOwn && Existing is null ? "Something else" : Heading)</h2>
+
+        @if (IsOwn)
+        {
+            <div class="field">
+                <label for="ms-title">What happened</label>
+                <input id="ms-title" type="text" maxlength="120" placeholder="Slept through, first tooth…"
+                       @bind="title" @bind:event="oninput" />
+            </div>
+        }
+        else if (Band is not null)
+        {
+            <div class="hint-line sheet-hint">@Band</div>
+        }
+
+        <div class="field">
+            <label for="ms-date">When</label>
+            <input id="ms-date" type="date" max="@Today" value="@on" @onchange="SetDate" />
+            <div class="hint-line">@AgeHint</div>
+        </div>
+
+        <div class="field">
+            <label for="ms-notes">Notes (optional)</label>
+            <input id="ms-notes" type="text" maxlength="500" @bind="notes" />
+        </div>
+
+        <div class="row-btns">
+            @if (Existing is not null)
+            {
+                <button type="button" class="btn danger" @onclick="() => OnRemove.InvokeAsync(Existing.Id)">Remove</button>
+            }
+            <button type="button" class="btn" @onclick="() => OnCancel.InvokeAsync()">Cancel</button>
+            <button type="button" class="btn primary" disabled="@(IsOwn && string.IsNullOrWhiteSpace(title))"
+                    @onclick="Save">Save</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    /// <summary>The milestone being recorded, when it comes from the guide.</summary>
+    [Parameter] public MilestoneGuide? FromGuide { get; set; }
+
+    /// <summary>The row being edited, when one already exists.</summary>
+    [Parameter] public Milestone? Existing { get; set; }
+
+    /// <summary>True for one somebody is writing themselves.</summary>
+    [Parameter] public bool IsOwn { get; set; }
+
+    /// <summary>When the baby was born, so the sheet can say how old they were.</summary>
+    [Parameter] public DateOnly? BornOn { get; set; }
+
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback<Entry> OnSave { get; set; }
+    [Parameter] public EventCallback<int> OnRemove { get; set; }
+
+    private string title = "";
+    private string on = "";
+    private string? notes;
+
+    private static string Today => DateTime.Now.ToString("yyyy-MM-dd");
+
+    private string Heading => FromGuide?.Title ?? Existing?.Title ?? "Milestone";
+
+    private string? Band => FromGuide is { } g ? Milestones.When(g, null) : null;
+
+    private string AgeHint
+    {
+        get
+        {
+            if (BornOn is not { } born || !DateOnly.TryParse(on, out var day))
+            {
+                return "";
+            }
+
+            return day < born ? "That is before they were born." : $"They were {Display.Age(born, day)} old.";
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        title = Existing?.Title ?? "";
+        notes = Existing?.Notes;
+        on = (Existing?.ReachedOn ?? DateOnly.FromDateTime(DateTime.Now)).ToString("yyyy-MM-dd");
+    }
+
+    private void SetDate(ChangeEventArgs e) => on = e.Value?.ToString() ?? on;
+
+    private Task Save()
+    {
+        var day = DateOnly.TryParse(on, out var parsed) ? parsed : DateOnly.FromDateTime(DateTime.Now);
+        return OnSave.InvokeAsync(new Entry(
+            day, title.Trim(), string.IsNullOrWhiteSpace(notes) ? null : notes.Trim()));
+    }
+
+    public sealed record Entry(DateOnly On, string Title, string? Notes);
+}

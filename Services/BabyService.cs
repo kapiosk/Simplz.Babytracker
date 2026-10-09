@@ -74,6 +74,24 @@ public sealed class BabyService(IDbContextFactory<AppDbContext> factory, ILogger
     }
 
     /// <summary>
+    /// Records when a baby was born, or clears it. Nothing else depends on it, so clearing it
+    /// only takes the age off the header again.
+    /// </summary>
+    public async Task SetBornOnAsync(int id, DateOnly? bornOn, CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+        var baby = await db.Babies.FirstOrDefaultAsync(b => b.Id == id, ct);
+        if (baby is null)
+        {
+            return;
+        }
+
+        baby.BornOn = bornOn;
+        await db.SaveChangesAsync(ct);
+        NotifyChanged();
+    }
+
+    /// <summary>
     /// The baby this device is looking at: the one on the sign-in cookie, or the first one when
     /// that claim is missing (nobody has chosen yet) or names a baby that no longer exists.
     /// Returns null only when there are no babies at all, which the migration rules out.

@@ -117,6 +117,24 @@ a { color: var(--accent); }
 .app-header .title { font-weight: 700; font-size: 1.05rem; }
 .app-header .sub { color: var(--text-dim); font-size: .8rem; }
 
+/* The age is a link, but in the header it should read as part of the date line rather than as
+   a button — underlined on press only, so it is discoverable without shouting. */
+.app-header .sub .age { color: var(--text); font-weight: 700; text-decoration: none; }
+.app-header .sub .age:active { text-decoration: underline; }
+
+/* ---------- milestones ---------- */
+
+.age-card { border-left: 8px solid var(--sleep); }
+.age-card .stock-figure .v { font-size: 2.2rem; }
+
+/* A recorded one keeps its text at full strength — a milestone reached is not spent, and
+   greying it out would read as crossing it off a list, which this deliberately is not. */
+.guide .name.done { color: var(--text); }
+.guide .done-mark { color: var(--vomit); font-size: 1.1rem; display: inline-flex; align-items: center; }
+.guide .done-mark .icon { width: 1.15rem; height: 1.15rem; }
+
+.event .btn.small { flex: none; align-self: center; }
+
 .app-main {
     max-width: 720px;
     margin: 0 auto;

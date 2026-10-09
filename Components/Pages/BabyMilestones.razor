@@ -1,0 +1,331 @@
+@page "/milestones"
+@rendermode InteractiveServer
+@implements IDisposable
+@inject Milestones MilestoneLog
+@inject BabyService Babies
+@inject ILogger<BabyMilestones> Logger
+
+<PageTitle>Milestones · Baby Tracker</PageTitle>
+
+@* Says, from the server, that this page still has a circuit. *@
+<CircuitHeartbeat />
+
+<h1>Milestones</h1>
+
+@if (baby is null)
+{
+    <div class="empty">No baby to record against yet.</div>
+}
+else if (baby.BornOn is null)
+{
+    <div class="card">
+        <div class="stock-empty">
+            No birth date yet, so there is no age to count from. Add one on
+            <NavLink href="babies">Babies</NavLink> and this fills in — the guide below works
+            without one, it just cannot say how old they were.
+        </div>
+    </div>
+}
+else
+{
+    <div class="card age-card">
+        <div class="stock-head">
+            <span class="k"><span class="ico sleep"><Icon Name="baby" /></span> @baby.Name</span>
+        </div>
+        <div class="stock-figure">
+            <span class="v">@Display.Age(baby.BornOn.Value, Today)</span>
+        </div>
+        <div class="stock-ledger">
+            <span>born @baby.BornOn.Value.ToString("d MMMM yyyy")</span>
+            @if (recorded.Count > 0)
+            {
+                <span>@recorded.Count recorded</span>
+            }
+        </div>
+    </div>
+}
+
+@if (baby is not null)
+{
+    @if (canEdit && NextUp.Count > 0)
+    {
+        <div class="section-title"><span>Around now</span></div>
+        <div class="card">
+            <ul class="events">
+                @foreach (var g in NextUp)
+                {
+                    <li class="event" @key="g.Key">
+                        <span class="ico @AreaCss(g.Area)"><Icon Name="@AreaIcon(g.Area)" /></span>
+                        <div class="body">
+                            <div class="name">@g.Title</div>
+                            <div class="meta">@Milestones.When(g, AgeWeeks)</div>
+                        </div>
+                        <button type="button" class="btn small" @onclick="() => Record(g)">Record</button>
+                    </li>
+                }
+            </ul>
+        </div>
+    }
+
+    <div class="section-title">
+        <span>Reached</span>
+        @if (canEdit)
+        {
+            <a href="" @onclick="AddOwn" @onclick:preventDefault="true">+ Something else</a>
+        }
+    </div>
+
+    <div class="card">
+        @if (recorded.Count == 0)
+        {
+            <div class="empty">Nothing recorded yet.</div>
+        }
+        else
+        {
+            <ul class="events">
+                @foreach (var m in recorded)
+                {
+                    var g = m.Key is null ? null : Milestones.Find(m.Key);
+                    <li class="event" @key="m.Id">
+                        <span class="ico @(g is null ? "" : AreaCss(g.Area))">
+                            <Icon Name="@(g is null ? "baby" : AreaIcon(g.Area))" />
+                        </span>
+                        <div class="body">
+                            <div class="name">@(g?.Title ?? m.Title ?? "Milestone")</div>
+                            <div class="meta">
+                                @m.ReachedOn.ToString("d MMM yyyy")@AgeAt(m)
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(m.Notes))
+                            {
+                                <div class="notes">@m.Notes</div>
+                            }
+                        </div>
+                        @if (canEdit)
+                        {
+                            <button type="button" class="icon-btn" @onclick="() => Edit(m)"
+                                    title="Edit" aria-label="Edit @(g?.Title ?? m.Title)"><Icon Name="pencil" /></button>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+
+    <details class="chart-numbers">
+        <summary>The whole guide</summary>
+        <ul class="events guide">
+            @foreach (var g in Milestones.Guide)
+            {
+                var done = recorded.FirstOrDefault(m => m.Key == g.Key);
+                <li class="event" @key="g.Key">
+                    <span class="ico @AreaCss(g.Area)"><Icon Name="@AreaIcon(g.Area)" /></span>
+                    <div class="body">
+                        <div class="name @(done is not null ? "done" : "")">@g.Title</div>
+                        <div class="meta">@Milestones.When(g, AgeWeeks)</div>
+                    </div>
+                    @if (done is not null)
+                    {
+                        <span class="done-mark" title="@done.ReachedOn.ToString("d MMM yyyy")"><Icon Name="baby" /></span>
+                    }
+                    else if (canEdit)
+                    {
+                        <button type="button" class="btn small" @onclick="() => Record(g)">Record</button>
+                    }
+                </li>
+            }
+        </ul>
+    </details>
+
+    <p class="login-note">
+        A guide, following the NHS's own framing rather than a schedule to keep to. Babies vary a
+        great deal and the ranges overlap more than any list can show — doing something later than
+        this says is usually nothing at all. Nothing here is ever counted as missed or late, and
+        nothing on this page is medical advice. If something is worrying you, your health visitor
+        or GP is the person to ask, and the reviews in the red book are there for exactly that.
+    </p>
+}
+
+@if (dialog is not null)
+{
+    <MilestoneDialog FromGuide="dialog.Guide" Existing="dialog.Existing" IsOwn="dialog.IsOwn"
+                     BornOn="baby?.BornOn"
+                     OnCancel="() => dialog = null" OnSave="SaveDialog" OnRemove="RemoveDialog" />
+}
+
+@if (toastUntil > DateTime.UtcNow)
+{
+    <div class="toast"><span>@toast</span></div>
+}
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    private bool canEdit;
+    private Baby? baby;
+    private List<Milestone> recorded = [];
+
+    private sealed record Pending(MilestoneGuide? Guide, Milestone? Existing, bool IsOwn);
+    private Pending? dialog;
+
+    private string? toast;
+    private DateTime toastUntil = DateTime.MinValue;
+
+    private static DateOnly Today => DateOnly.FromDateTime(DateTime.Now);
+
+    private int? AgeWeeks => baby?.BornOn is { } born ? Display.AgeWeeks(born, Today) : null;
+
+    private List<MilestoneGuide> NextUp => Milestones.NextUp(recorded, AgeWeeks).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        canEdit = await Access.CanEditAsync(AuthState);
+        baby = await Babies.SelectedAsync(AuthState);
+        await Reload();
+
+        MilestoneLog.Changed += OnChanged;
+
+        // The birth date is edited on the Babies screen, so the age here would otherwise sit
+        // stale on a phone that left this page open.
+        Babies.Changed += OnBabiesChanged;
+    }
+
+    private async Task Reload()
+    {
+        if (baby is not null)
+        {
+            recorded = await MilestoneLog.ForBabyAsync(baby.Id);
+        }
+    }
+
+    private void OnChanged(int babyId)
+    {
+        if (babyId != baby?.Id)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(async () =>
+        {
+            try
+            {
+                await Reload();
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Refreshing the milestones failed.");
+            }
+        });
+    }
+
+    private void OnBabiesChanged() => _ = InvokeAsync(async () =>
+    {
+        try
+        {
+            baby = await Babies.SelectedAsync(AuthState);
+            await Reload();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Refreshing the baby on the milestones page failed.");
+        }
+    });
+
+    private void Record(MilestoneGuide g)
+    {
+        if (canEdit)
+        {
+            dialog = new Pending(g, recorded.FirstOrDefault(m => m.Key == g.Key), false);
+        }
+    }
+
+    private void Edit(Milestone m)
+    {
+        if (canEdit)
+        {
+            dialog = new Pending(m.Key is null ? null : Milestones.Find(m.Key), m, m.Key is null);
+        }
+    }
+
+    private void AddOwn()
+    {
+        if (canEdit)
+        {
+            dialog = new Pending(null, null, true);
+        }
+    }
+
+    private async Task SaveDialog(MilestoneDialog.Entry entry)
+    {
+        var pending = dialog;
+        dialog = null;
+
+        if (pending is null || !canEdit || baby is null)
+        {
+            return;
+        }
+
+        if (pending.Guide is { } g)
+        {
+            await MilestoneLog.ReachedAsync(baby.Id, g.Key, entry.On, entry.Notes);
+            Toast(g.Title);
+        }
+        else if (pending.Existing is { } existing)
+        {
+            // Rewriting one somebody owns: the old row goes and the new one takes its place,
+            // which keeps the service to two ways in rather than three.
+            await MilestoneLog.RemoveAsync(existing.Id);
+            await MilestoneLog.AddOwnAsync(baby.Id, entry.Title, entry.On, entry.Notes);
+            Toast("Saved");
+        }
+        else
+        {
+            await MilestoneLog.AddOwnAsync(baby.Id, entry.Title, entry.On, entry.Notes);
+            Toast(entry.Title);
+        }
+    }
+
+    private async Task RemoveDialog(int id)
+    {
+        dialog = null;
+
+        if (canEdit)
+        {
+            await MilestoneLog.RemoveAsync(id);
+            Toast("Removed");
+        }
+    }
+
+    /// <summary>" · 6 weeks old", when there is a birth date to count from.</summary>
+    private string AgeAt(Milestone m) =>
+        baby?.BornOn is { } born && m.ReachedOn >= born ? $" · {Display.Age(born, m.ReachedOn)} old" : "";
+
+    private static string AreaCss(MilestoneArea area) => area switch
+    {
+        MilestoneArea.Movement => "sleep",
+        MilestoneArea.Communication => "bottle",
+        MilestoneArea.Feeding => "breast",
+        _ => "urine"
+    };
+
+    private static string AreaIcon(MilestoneArea area) => area switch
+    {
+        MilestoneArea.Movement => "trend",
+        MilestoneArea.Communication => "chart",
+        MilestoneArea.Feeding => "bottle",
+        _ => "baby"
+    };
+
+    private void Toast(string message)
+    {
+        toast = message;
+        toastUntil = DateTime.UtcNow.AddSeconds(2.5);
+    }
+
+    public void Dispose()
+    {
+        MilestoneLog.Changed -= OnChanged;
+        Babies.Changed -= OnBabiesChanged;
+    }
+}

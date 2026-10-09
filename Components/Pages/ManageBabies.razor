@@ -34,6 +34,24 @@
             <div class="baby-name">@baby.Name</div>
         }
 
+        @if (canEdit)
+        {
+            <div class="field" style="margin-bottom:.4rem">
+                <label for="born-@baby.Id">Born on</label>
+                <input id="born-@baby.Id" type="date" max="@Today"
+                       value="@(baby.BornOn?.ToString("yyyy-MM-dd"))"
+                       @onchange="e => SetBorn(baby.Id, e.Value?.ToString())" />
+                <div class="hint-line">
+                    Optional. With one, the age appears beside the date in the header and opens
+                    the <NavLink href="milestones">milestones</NavLink>.
+                </div>
+            </div>
+        }
+        else if (baby.BornOn is { } born)
+        {
+            <div class="hint-line">Born @born.ToString("d MMMM yyyy") · @Display.Age(born, DateOnly.FromDateTime(DateTime.Now))</div>
+        }
+
         <div class="hint-line">@Summary(baby.Id)</div>
     </div>
 }
@@ -84,6 +102,25 @@
     {
         babies = await Babies.ListAsync();
         counts = await Babies.EntryCountsAsync();
+    }
+
+    private static string Today => DateTime.Now.ToString("yyyy-MM-dd");
+
+    private async Task SetBorn(int id, string? value)
+    {
+        if (!canEdit)
+        {
+            return;
+        }
+
+        // An emptied box clears it rather than being ignored: somebody who typed the wrong date
+        // needs a way back to none at all.
+        await Babies.SetBornOnAsync(id, DateOnly.TryParse(value, out var day) ? day : null);
+        await Reload();
+
+        // The header is rendered on the server and holds the age, so it will not know until the
+        // page is fetched again.
+        Nav.NavigateTo(Nav.Uri, forceLoad: true);
     }
 
     private string Summary(int babyId) =>

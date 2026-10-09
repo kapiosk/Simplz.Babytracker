@@ -67,6 +67,66 @@ public static class Display
         _ => kind.ToString()
     };
 
+    /// <summary>
+    /// How old, in the unit people actually use at that age: days for the first fortnight, then
+    /// weeks, then months, then years. Weeks run to fourteen because that is how long everybody
+    /// — the red book, the health visitor, the parent — goes on counting in them.
+    /// </summary>
+    public static string Age(DateOnly born, DateOnly today)
+    {
+        var days = today.DayNumber - born.DayNumber;
+
+        if (days < 0)
+        {
+            return "due";
+        }
+
+        if (days == 0)
+        {
+            return "born today";
+        }
+
+        if (days < 14)
+        {
+            return days == 1 ? "1 day" : $"{days} days";
+        }
+
+        if (days < 98)
+        {
+            return $"{days / 7} weeks";
+        }
+
+        var months = ((today.Year - born.Year) * 12) + today.Month - born.Month;
+        if (today.Day < born.Day)
+        {
+            months--;
+        }
+
+        if (months < 24)
+        {
+            // Whole months plus any whole weeks past the monthly anniversary, which is how a
+            // parent says it: "four months and a bit" rather than "132 days".
+            var anniversary = born.AddMonths(months);
+            var weeks = (today.DayNumber - anniversary.DayNumber) / 7;
+            return weeks > 0 ? $"{months} months {weeks}w" : $"{months} months";
+        }
+
+        var years = months / 12;
+        var rest = months % 12;
+        return rest > 0 ? $"{years}y {rest}m" : years == 1 ? "1 year" : $"{years} years";
+    }
+
+    /// <summary>Whole weeks since birth, which is what the milestone guide is written in.</summary>
+    public static int AgeWeeks(DateOnly born, DateOnly today) =>
+        Math.Max(0, (today.DayNumber - born.DayNumber) / 7);
+
+    /// <summary>Weeks said as the months people would use, for the later milestones.</summary>
+    public static string Months(int weeks)
+    {
+        var months = (int)Math.Round(weeks / 4.345);
+        return months >= 24 ? $"{months / 12} years" : $"{months} months";
+    }
+
     /// <summary>The batch, lower case, for the middle of a sentence: "night milk".</summary>
     public static string Batch(MilkTime batch) => batch == MilkTime.Night ? "night" : "morning";
 

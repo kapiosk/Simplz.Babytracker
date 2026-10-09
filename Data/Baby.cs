@@ -12,4 +12,11 @@ public class Baby
 
     [Required, MaxLength(60)]
     public string Name { get; set; } = "";
+
+    /// <summary>
+    /// The day they were born, if anybody has said. Everything about age is optional and
+    /// nothing in the app needs it — without one, the age beside the date simply does not
+    /// appear and the milestones are still there to record against.
+    /// </summary>
+    public DateOnly? BornOn { get; set; }
 }

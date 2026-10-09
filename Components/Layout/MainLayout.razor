@@ -4,7 +4,16 @@
 <header class="app-header">
     <div>
         <div class="title">Baby Tracker</div>
-        <div class="sub">@DateTime.Now.ToString("dddd d MMMM")</div>
+        @* The age doubles as the way in to the milestones. It is the only route besides the
+           Babies screen, which keeps the nav at five tabs — a sixth would be cramped on a
+           phone, and this is a thing looked at now and then rather than every feed. *@
+        <div class="sub">
+            @DateTime.Now.ToString("dddd d MMMM")
+            @if (selected?.BornOn is { } born)
+            {
+                <text> · </text><NavLink class="age" href="milestones">@Display.Age(born, DateOnly.FromDateTime(DateTime.Now))</NavLink>
+            }
+        </div>
     </div>
 
     <div class="header-actions">
