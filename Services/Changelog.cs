@@ -17,6 +17,14 @@ public static class Changelog
 
     public static readonly IReadOnlyList<Release> Releases =
     [
+        new("1.22", new DateOnly(2026, 10, 9),
+        [
+            "Add a birth date on Babies and the age appears beside the date in the header — days for the first fortnight, then weeks, then months.",
+            "Tap that age for Milestones: a guide of the usual ones, what is around now, and a record of what has been reached and how old they were when it happened.",
+            "You can add your own too — slept through, first tooth, whatever is worth remembering.",
+            "The guide follows the NHS's framing of these as wide ranges rather than dates to hit. Nothing is ever shown as late or missed, because babies vary enormously and almost always that is all it is."
+        ]),
+
         new("1.21", new DateOnly(2026, 9, 21),
         [
             "Fixed: the average day was overstating sleep — 14h 20m a day where the real figure was 13h 02m. It was adding up the lengths of each stretch, and two stretches the average shows apart are often one long one on any given day, so those hours were counted twice. It now counts each day once and agrees with the Sleep chart.",

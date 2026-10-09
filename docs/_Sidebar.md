@@ -3,6 +3,7 @@
 - **[Home](Home)**
 - [Tracking a day](Tracking-a-day)
 - [Pumping](Pumping)
+- [Age and milestones](Age-and-milestones)
 - [The chart and the report](Chart-and-report)
 - [Photos and video](Photos-and-video)
 - [More than one baby](More-than-one-baby)
