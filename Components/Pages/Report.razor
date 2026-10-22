@@ -73,14 +73,19 @@
             <thead>
                 <tr>
                     <th>Day</th>
-                    <th><Icon Name="breast" /></th>
+                    <th class="breast"><Icon Name="breast" /></th>
                     <th>Time</th>
-                    <th><Icon Name="bottle" /></th>
+                    <th class="sleep"><Icon Name="sleep" /></th>
+                    <th class="bottle"><Icon Name="bottle" /></th>
                     <th>ml</th>
                     <th>Time</th>
-                    <th><Icon Name="poop" /></th>
-                    <th><Icon Name="urine" /></th>
-                    <th><Icon Name="vomit" /></th>
+                    <th class="poop"><Icon Name="poop" /></th>
+                    <th class="urine"><Icon Name="urine" /></th>
+                    <th class="vomit"><Icon Name="vomit" /></th>
+                    @* The same order as the tiles above, pumping last for the same reason. *@
+                    <th class="breast"><Icon Name="pump" /></th>
+                    <th>ml</th>
+                    <th>Time</th>
                 </tr>
             </thead>
             <tbody>
@@ -90,12 +95,16 @@
                         <td>@day.Date.ToString("ddd d MMM")</td>
                         <td>@Num(day.Breast)</td>
                         <td>@(day.BreastTime > TimeSpan.Zero ? Display.Duration(day.BreastTime) : "–")</td>
+                        <td>@(day.Sleep > TimeSpan.Zero ? Display.Duration(day.Sleep) : "–")</td>
                         <td>@Num(day.Bottle)</td>
                         <td>@(day.Ml > 0 ? day.Ml.ToString() : "–")</td>
                         <td>@(day.BottleTime > TimeSpan.Zero ? Display.Duration(day.BottleTime) : "–")</td>
                         <td>@Num(day.Poop)</td>
                         <td>@Num(day.Urine)</td>
                         <td>@Num(day.Vomit)</td>
+                        <td>@Num(day.Pumps)</td>
+                        <td>@(day.PumpMl > 0 ? day.PumpMl.ToString() : "–")</td>
+                        <td>@(day.PumpTime > TimeSpan.Zero ? Display.Duration(day.PumpTime) : "–")</td>
                     </tr>
                 }
             </tbody>
@@ -121,9 +130,25 @@
     <button class="btn block subtle" @onclick="AddEarlier">+ Add an entry from earlier</button>
 }
 
+@* After the baby's entries, as the tile is after the baby's tiles. Each session with when it
+   was, how long it ran and what came out — the tile's total, opened out. *@
+<div class="section-title">
+    <span>Pumping sessions (@pumps.Count)</span>
+</div>
+
+<div class="card">
+    <PumpList Entries="pumps" ShowDate="true" CanEdit="canEdit" OnEdit="e => editingPump = e"
+              EmptyText="No sessions in this range." />
+</div>
+
 @if (editing is not null)
 {
     <EditEventDialog Event="editing" CanEdit="canEdit" OnCancel="() => editing = null" OnSave="SaveEdit" OnDelete="DeleteEvent" />
+}
+
+@if (editingPump is not null)
+{
+    <PumpEntryDialog Entry="editingPump" OnCancel="() => editingPump = null" OnSave="SavePump" OnDelete="DeletePump" />
 }
 
 @code {
@@ -140,6 +165,10 @@
     private List<BabyEvent> listed = [];
     private List<DayRow> days = [];
     private BabyEvent? editing;
+
+    /// <summary>The finished sessions in the range, newest first. What the tile adds up.</summary>
+    private List<PumpEntry> pumps = [];
+    private PumpEntry? editingPump;
 
     private int breastCount;
     private TimeSpan breastTotal;
@@ -213,7 +242,7 @@
 
         // Sessions only, and only finished ones — a stock correction carries millilitres too,
         // but that figure is what the fridge holds rather than what came out of anybody.
-        var pumps = (await Pumping.GetRangeAsync(baby.Id, fromUtc, toUtc))
+        pumps = (await Pumping.GetRangeAsync(baby.Id, fromUtc, toUtc))
             .Where(e => e.Kind == PumpEntryKind.Session && e.EndUtc is not null)
             .ToList();
         pumpCount = pumps.Count;
@@ -223,15 +252,22 @@
         // Every day in the range gets a row, including the quiet ones.
         var byDay = events.GroupBy(e => Display.ToLocal(e.StartUtc).Date)
             .ToDictionary(g => g.Key, g => g.ToList());
+        var pumpsByDay = pumps.GroupBy(e => Display.ToLocal(e.StartUtc).Date)
+            .ToDictionary(g => g.Key, g => g.ToList());
 
         days = [];
         for (var day = toDate; day >= fromDate; day = day.AddDays(-1))
         {
             var entries = byDay.TryGetValue(day, out var list) ? list : [];
+            var sessions = pumpsByDay.TryGetValue(day, out var pumped) ? pumped : [];
             days.Add(new DayRow(
                 day,
                 entries.Count(e => e.Kind == EventKind.BreastFeed),
                 entries.Where(e => e.Kind == EventKind.BreastFeed && e.Duration is not null)
+                       .Aggregate(TimeSpan.Zero, (sum, e) => sum + e.Duration!.Value),
+
+                // A sleep counts on the day it began, the whole of it, as the tile counts it.
+                entries.Where(e => e.Kind == EventKind.Sleep && e.Duration is not null)
                        .Aggregate(TimeSpan.Zero, (sum, e) => sum + e.Duration!.Value),
                 entries.Count(e => e.Kind == EventKind.BottleFeed),
                 entries.Where(e => e.Kind == EventKind.BottleFeed).Sum(e => e.AmountMl ?? 0),
@@ -239,7 +275,10 @@
                        .Aggregate(TimeSpan.Zero, (sum, e) => sum + (e.Duration ?? TimeSpan.Zero)),
                 entries.Count(e => e.Kind == EventKind.Poop),
                 entries.Count(e => e.Kind == EventKind.Urine),
-                entries.Count(e => e.Kind == EventKind.Vomit)));
+                entries.Count(e => e.Kind == EventKind.Vomit),
+                sessions.Count,
+                sessions.Sum(e => e.AmountMl ?? 0),
+                sessions.Aggregate(TimeSpan.Zero, (sum, e) => sum + (e.Duration ?? TimeSpan.Zero))));
         }
     }
 
@@ -319,6 +358,30 @@
         await Events.DeleteAsync(id);
     }
 
+    private async Task SavePump(PumpEntry updated)
+    {
+        editingPump = null;
+
+        if (!canEdit)
+        {
+            return;
+        }
+
+        await Pumping.UpdateAsync(updated);
+    }
+
+    private async Task DeletePump(int id)
+    {
+        editingPump = null;
+
+        if (!canEdit)
+        {
+            return;
+        }
+
+        await Pumping.DeleteAsync(id);
+    }
+
     public void Dispose()
     {
         Events.Changed -= OnEventsChanged;
@@ -329,7 +392,8 @@
     }
 
     private record DayRow(
-        DateTime Date, int Breast, TimeSpan BreastTime,
+        DateTime Date, int Breast, TimeSpan BreastTime, TimeSpan Sleep,
         int Bottle, int Ml, TimeSpan BottleTime,
-        int Poop, int Urine, int Vomit);
+        int Poop, int Urine, int Vomit,
+        int Pumps, int PumpMl, TimeSpan PumpTime);
 }

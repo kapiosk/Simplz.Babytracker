@@ -44,8 +44,10 @@
 <BarChart Label="Pumped" Css="breast" IconName="pump" Bucket="@bucket"
           Total="@($"{(int)pumped.Sum(p => p.Value)} ml")" Points="pumped" />
 
+@* This one opens into the sessions themselves — when each began and how long it ran — because
+   a day's total was the figure being asked past: it says how much, and not when. *@
 <BarChart Label="Time pumping" Css="breast" IconName="timer" Bucket="@bucket"
-          Total="@Minutes(pumpTime.Sum(p => p.Value))" Points="pumpTime" />
+          Total="@Minutes(pumpTime.Sum(p => p.Value))" Points="pumpTime" DetailsTitle="Each session" />
 
 <BarChart Label="Poops" Css="poop" IconName="poop" Bucket="@bucket"
           Total="@($"{(int)poops.Sum(p => p.Value)}")" Points="poops" />
@@ -244,7 +246,8 @@
             bottleTime.Add(new BarChart.Point(name, bottleMinutes, Minutes(bottleMinutes),
                 bottleMinutes >= 1 ? Display.Compact(TimeSpan.FromMinutes(bottleMinutes)) : null));
             pumpTime.Add(new BarChart.Point(name, pumpMinutes, Minutes(pumpMinutes),
-                pumpMinutes >= 1 ? Display.Compact(TimeSpan.FromMinutes(pumpMinutes)) : null));
+                pumpMinutes >= 1 ? Display.Compact(TimeSpan.FromMinutes(pumpMinutes)) : null,
+                Display.Sessions(finishedPumps)));
             poops.Add(new BarChart.Point(name, poopCount, $"{poopCount}"));
         }
     }

@@ -186,12 +186,14 @@ a { color: var(--accent); }
 .action.running .ico { color: #fff; }
 
 .stat .k .icon, table.grid th .icon { display: inline-block; width: 1.15em; height: 1.15em; vertical-align: -.25em; }
-.stat.breast .k .icon, table.grid th:nth-child(2) .icon, table.grid th:nth-child(3) .icon { color: var(--breast); }
-.stat.bottle .k .icon { color: var(--bottle); }
-.stat.poop .k .icon   { color: var(--poop); }
-.stat.urine .k .icon  { color: var(--urine); }
-.stat.vomit .k .icon  { color: var(--vomit); }
-.stat.sleep .k .icon  { color: var(--sleep); }
+/* By class rather than by column, so the day-by-day table can gain a column without the
+   colours sliding along to the wrong heading. */
+.stat.breast .k .icon, table.grid th.breast .icon { color: var(--breast); }
+.stat.bottle .k .icon, table.grid th.bottle .icon { color: var(--bottle); }
+.stat.poop .k .icon,   table.grid th.poop .icon   { color: var(--poop); }
+.stat.urine .k .icon,  table.grid th.urine .icon  { color: var(--urine); }
+.stat.vomit .k .icon,  table.grid th.vomit .icon  { color: var(--vomit); }
+.stat.sleep .k .icon,  table.grid th.sleep .icon  { color: var(--sleep); }
 table.grid th .icon { margin-left: auto; }
 
 .sheet h2 { display: flex; align-items: center; gap: .5rem; }
@@ -1121,6 +1123,9 @@ body { padding-top: var(--circuit-banner-h, 0px); }
 }
 
 .chart-numbers .numbers b { color: var(--text); font-weight: 700; }
+
+/* A line that lists the entries behind a bar is as long as the day was busy, so one to a row. */
+.chart-numbers .numbers.wide { grid-template-columns: 1fr; }
 
 .bars.sleep  .bar { background: var(--sleep); }
 .bars.breast .bar { background: var(--breast); }

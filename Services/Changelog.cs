@@ -17,6 +17,12 @@ public static class Changelog
 
     public static readonly IReadOnlyList<Release> Releases =
     [
+        new("1.24", new DateOnly(2026, 10, 22),
+        [
+            "The report lists every pumping session in the range — when, how long, how much — under the entries, with the pencil to change one. Its day-by-day table has sleep and pumping columns now too.",
+            "On Trends, Each session under Time pumping opens the times behind each bar — 07:10 20m · 13:40 25m — rather than the day's total alone."
+        ]),
+
         new("1.23", new DateOnly(2026, 10, 9),
         [
             "Milestones has a From earlier list: the ones whose usual range has already gone by and were never recorded, so you can fill them in after the fact. A rough date is fine.",

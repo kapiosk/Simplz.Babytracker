@@ -158,6 +158,22 @@ public static class Display
     public static string Compact(TimeSpan t) =>
         t.TotalHours >= 1 ? $"{(int)t.TotalHours}h{t.Minutes:00}" : $"{(int)t.TotalMinutes}m";
 
+    /// <summary>
+    /// The sessions a bar adds up, each as when it began and how long it ran, earliest first —
+    /// "07:10 20m · 13:40 25m". Null when there are none, so the line is left out rather than
+    /// printed empty. A session still running has no length yet and is left out the same way.
+    /// </summary>
+    public static string? Sessions(IEnumerable<PumpEntry> sessions)
+    {
+        var parts = sessions
+            .Where(s => s.Duration is not null)
+            .OrderBy(s => s.StartUtc)
+            .Select(s => $"{ToLocal(s.StartUtc):HH:mm} {Duration(s.Duration!.Value)}")
+            .ToList();
+
+        return parts.Count == 0 ? null : string.Join(" · ", parts);
+    }
+
     public static string Ago(DateTime utc)
     {
         var t = DateTime.UtcNow - utc;
