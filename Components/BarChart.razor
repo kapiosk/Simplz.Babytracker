@@ -54,6 +54,21 @@
                     </span>
                 }
             </div>
+
+            @if (HasDetails)
+            {
+                @* With every bar labelled there is no list to open, so the entries get one of
+                   their own. Same plain <details>, for the same reasons as the one below. *@
+                <details class="chart-numbers">
+                    <summary>@DetailsTitle</summary>
+                    <div class="numbers wide">
+                        @foreach (var point in Points.Where(p => p.Detail is not null))
+                        {
+                            <span><b>@point.Label</b> @point.Detail</span>
+                        }
+                    </div>
+                </details>
+            }
         }
         else
         {
@@ -69,10 +84,10 @@
                works with the circuit down — the same reasoning as the reload button. *@
             <details class="chart-numbers">
                 <summary>Every @Bucket</summary>
-                <div class="numbers">
+                <div class="numbers @(HasDetails ? "wide" : "")">
                     @foreach (var point in Points)
                     {
-                        <span><b>@point.Label</b> @point.Listed</span>
+                        <span><b>@point.Label</b> @point.Listed@(point.Detail is { } d ? $" · {d}" : "")</span>
                     }
                 </div>
             </details>
@@ -95,6 +110,14 @@
     [Parameter] public string Bucket { get; set; } = "day";
 
     [Parameter, EditorRequired] public IReadOnlyList<Point> Points { get; set; } = [];
+
+    /// <summary>
+    /// What to call the list of the entries behind each bar — "Each session" — when the points
+    /// carry one. Left unset, a bar is only ever its total.
+    /// </summary>
+    [Parameter] public string? DetailsTitle { get; set; }
+
+    private bool HasDetails => DetailsTitle is not null && Points.Any(p => p.Detail is not null);
 
     /// <summary>
     /// Up to this many bars, every one carries its own figure under it. Past it there is not
@@ -143,7 +166,12 @@
     /// The chart is titled, so a bare number there is not ambiguous. Optional: where the full
     /// reading is already short enough, leave it and both are the same.
     /// </param>
-    public sealed record Point(string Label, double Value, string Text, string? Short = null)
+    /// <param name="Detail">
+    /// The entries the bar adds up — "07:10 20m · 13:40 25m" — for the list that opens them,
+    /// where a total alone does not answer when. Optional, and only shown under a chart that
+    /// names its list.
+    /// </param>
+    public sealed record Point(string Label, double Value, string Text, string? Short = null, string? Detail = null)
     {
         /// <summary>What goes under a bar. A dash for nothing: "0 feeds" seven times over
         /// reads like a fault, where a row of dashes reads as the quiet week it was.</summary>

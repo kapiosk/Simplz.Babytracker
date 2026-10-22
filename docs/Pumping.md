@@ -1,8 +1,8 @@
 # Pumping
 
-Everything to do with pumping is on the **Pump** tab, and nothing to do with pumping is anywhere
-else. It is about you rather than about the baby, which is why it has its own screen and stays out
-of the baby's log, the chart, the report and the trends.
+Everything you *do* about pumping is on the **Pump** tab. It is about you rather than about the
+baby, which is why it has its own screen and stays out of the baby's log and the chart. The report
+and the trends count it, last on each page for the same reason — see below.
 
 ## A session
 
@@ -78,11 +78,19 @@ and you can correct the figure directly if it is wrong. See
 **+ Add a session from earlier** is there for the ones you did not log at the time. It opens
 pre-filled as a session that started twenty minutes ago and has just finished.
 
-## On Trends
+## On the report and on Trends
 
-Millilitres pumped is the fourth chart on [Trends](Chart-and-report), a bar a day over a range or
-a bar an hour on Today. Only finished sessions count, and a stock correction does not — that
-figure is what the fridge holds rather than what came out of anybody.
+The [report](Chart-and-report) has a pumping tile — millilitres, sessions, time — last of the
+tiles; pumping columns at the end of its day-by-day table; and under the baby's entries, **every
+session in the range** with when it was, how long it ran and what came out. The pencil there opens
+the same editor as the log here.
+
+On [Trends](Chart-and-report), **Pumped** and **Time pumping** are a bar a day over a range or a
+bar an hour on Today. **Each session** under Time pumping opens the sessions behind every bar —
+*07:10 20m · 13:40 25m* — because a day's total says how much and not when.
+
+Only finished sessions count anywhere, and a stock correction never does — that figure is what the
+fridge holds rather than what came out of anybody.
 
 ## The read-only password
 

@@ -40,6 +40,16 @@ internal static class DisplayChecks
         h.Check("compact, for under a bar", Display.Compact(TimeSpan.FromMinutes(740)), "12h20");
         h.Check("compact under an hour", Display.Compact(TimeSpan.FromMinutes(45)), "45m");
 
+        h.Section("display: the sessions behind a bar");
+        var day = new DateTime(2026, 10, 5);
+        h.Check("each session, when and how long, earliest first",
+            Display.Sessions([Session(day, 13, 40, 25), Session(day, 7, 10, 20)]), "07:10 20m · 13:40 25m");
+        h.Check("a pause comes off the length",
+            Display.Sessions([Session(day, 7, 10, 20, pausedMinutes: 5)]), "07:10 15m");
+        h.Check("none is nothing, not an empty line", Display.Sessions([]), null);
+        h.Check("a session still running is not a time yet",
+            Display.Sessions([new PumpEntry { Kind = PumpEntryKind.Session, StartUtc = Display.ToUtc(day.AddHours(7)) }]), null);
+
         h.Section("display: age");
         var born = new DateOnly(2026, 1, 15);
 
@@ -76,4 +86,12 @@ internal static class DisplayChecks
         h.Check("weeks as months", Display.Months(52), "12 months");
         h.Check("weeks as years", Display.Months(104), "2 years");
     }
+
+    private static PumpEntry Session(DateTime day, int hour, int minute, int minutes, int pausedMinutes = 0) => new()
+    {
+        Kind = PumpEntryKind.Session,
+        StartUtc = Display.ToUtc(day.AddHours(hour).AddMinutes(minute)),
+        EndUtc = Display.ToUtc(day.AddHours(hour).AddMinutes(minute + minutes)),
+        PausedSeconds = pausedMinutes * 60
+    };
 }

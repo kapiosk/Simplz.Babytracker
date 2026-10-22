@@ -158,40 +158,7 @@ else if (running is not null)
 </div>
 
 <div class="card">
-    @if (recent.Count == 0)
-    {
-        <div class="empty">Nothing logged yet.</div>
-    }
-    else
-    {
-        <ul class="events">
-            @foreach (var entry in recent)
-            {
-                <li class="event" @key="entry.Id">
-                    <span class="ico @(entry.Kind == PumpEntryKind.StockSet ? "" : "breast")">
-                        <Icon Name="@(entry.Kind == PumpEntryKind.StockSet ? "pencil" : "pump")" />
-                    </span>
-
-                    <div class="body">
-                        <div class="name">@Headline(entry)</div>
-                        <div class="meta">
-                            @Stamp(entry)@Detail(entry)@Since(entry)
-                        </div>
-                        @if (!string.IsNullOrWhiteSpace(entry.Notes))
-                        {
-                            <div class="notes">@entry.Notes</div>
-                        }
-                    </div>
-
-                    @if (canEdit)
-                    {
-                        <button type="button" class="icon-btn" @onclick="() => Edit(entry)"
-                                title="Edit" aria-label="Edit @Headline(entry)"><Icon Name="pencil" /></button>
-                    }
-                </li>
-            }
-        </ul>
-    }
+    <PumpList Entries="recent" CanEdit="canEdit" OnEdit="Edit" />
 </div>
 
 @if (canEdit)
@@ -465,45 +432,6 @@ else if (running is not null)
         await Pumping.DeleteAsync(id);
         Toast("Deleted");
     }
-
-    private static string Headline(PumpEntry entry) => entry.Kind switch
-    {
-        PumpEntryKind.StockSet when entry.MilkTime is { } side =>
-            $"{Display.Batch(side).ToUpperInvariant()[0]}{Display.Batch(side)[1..]} stock set to {entry.AmountMl ?? 0} ml",
-        PumpEntryKind.StockSet => $"Stock set to {entry.AmountMl ?? 0} ml",
-        _ when entry.IsPaused => "Paused",
-        _ when entry.IsRunning => "Pumping now",
-        _ when entry.AmountMl is > 0 && entry.MilkTime is { } b => $"Pumped {entry.AmountMl} ml · {Display.Batch(b)}",
-        _ => entry.AmountMl is > 0 ? $"Pumped {entry.AmountMl} ml" : "Pumped",
-    };
-
-    /// <summary>
-    /// When it happened. The weekday and date are dropped for anything from today, which is most
-    /// of what the log holds — "10:51" beside "3h 10m ago" says it, and "Wed 11 Sept" in front of
-    /// both is the part nobody is reading.
-    /// </summary>
-    private static string Stamp(PumpEntry entry)
-    {
-        var local = Display.ToLocal(entry.StartUtc);
-        return local.Date == DateTime.Now.Date
-            ? local.ToString("HH:mm")
-            : local.ToString("ddd d MMM, HH:mm");
-    }
-
-    private static string Detail(PumpEntry entry) =>
-        entry.Kind == PumpEntryKind.StockSet || entry.Duration is not { } length
-            ? ""
-            : $" · {Display.Duration(length)}";
-
-    /// <summary>
-    /// How long ago it finished, which is the question this log is actually asked — whether it
-    /// is time to pump again is a matter of how long it has been, not of what the clock said.
-    ///
-    /// A running session gets nothing: it has not ended, and the timer above is already counting.
-    /// A stock correction dates from when it was made, so it answers the same question.
-    /// </summary>
-    private static string Since(PumpEntry entry) =>
-        entry.IsRunning ? "" : $" · {Display.Ago(entry.EndUtc ?? entry.StartUtc)}";
 
     private static string Sessions(int count) => count == 1 ? "1 session" : $"{count} sessions";
 

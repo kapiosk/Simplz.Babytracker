@@ -44,8 +44,12 @@ Totals across the top:
 - **Pumping** — millilitres, how many sessions, and how long they took. Last of the tiles, because
   everything above it is about the baby and this one is not.
 
-Below that, a row per day covering every day in the range including the quiet ones, and then the
-entries themselves. Each is editable with the parent password.
+Below that, a row per day covering every day in the range including the quiet ones — the feeds,
+the sleep, the bottles, the nappies, and the pumping — and then the entries themselves. Each is
+editable with the parent password.
+
+Last, **the pumping sessions in the range**, one line each: when, how long, how much, and which
+batch if it was labelled. The pencil opens the same editor as the pump log.
 
 Only finished sleeps and feeds count towards the totals — one still running has no length yet. Only
 bottles that were *timed* contribute to the bottle time; one logged in a single tap has no length,
@@ -87,6 +91,10 @@ telling one thing from another; every chart is titled, so nothing depends on it.
 
 Only *timed* bottles count towards the time. One logged in a single tap has no length, so a day of
 those reads as a dash rather than a zero.
+
+**Each session** under *Time pumping* opens the sessions behind every bar — *07:10 20m · 13:40 25m*
+— so the chart says when as well as how much. Over a longer range the same times sit in the
+*Every day* list beside each day's total.
 
 Over a range of days it draws a bar a day, so a week or a month has a shape — feeding settling
 down, sleep stretching out, nappies steady. On **Today** it draws a bar an *hour* instead, which
