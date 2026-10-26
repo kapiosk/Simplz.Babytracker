@@ -113,10 +113,11 @@
             <span class="hint">@LastHint(EventKind.Urine)</span>
         </button>
 
-        <button class="action vomit" @onclick="() => Log(EventKind.Vomit)">
-            <span class="ico"><Icon Name="vomit" /></span>
-            <span>Vomit</span>
-            <span class="hint">@LastHint(EventKind.Vomit)</span>
+        @* Milk brought back up. Being properly sick is on the Health tab, as its own kind. *@
+        <button class="action spitup" @onclick="() => Log(EventKind.SpitUp)">
+            <span class="ico"><Icon Name="spitup" /></span>
+            <span>Spit-up</span>
+            <span class="hint">@LastHint(EventKind.SpitUp)</span>
         </button>
     </div>
 

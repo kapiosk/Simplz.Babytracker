@@ -26,6 +26,9 @@ public class ChartRow
             case EventKind.BottleFeed: Bottles.Add(e); break;
             case EventKind.Urine: Urine.Add(e); break;
             case EventKind.Poop: Stools.Add(e); break;
+            // Both kinds of bringing up go in the one column, as on the paper chart; the mark
+            // tells them apart — see OutputMarks.
+            case EventKind.SpitUp:
             case EventKind.Vomit: Emesis.Add(e); break;
         }
     }

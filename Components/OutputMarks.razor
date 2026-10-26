@@ -1,15 +1,21 @@
-@* The "+" marks in an output column; with edit rights each one opens its own entry. *@
+@* The "+" marks in an output column; with edit rights each one opens its own entry.
+   The two that matter when the baby is ill get a letter instead, so they stand out in a column
+   of plusses: D for a poop that was diarrhoea, V for a vomit rather than a spit-up. The letter
+   is the encoding, not a colour, and the title says it in full. *@
 @foreach (var entry in Entries)
 {
     var at = Display.ToLocal(entry.StartUtc).ToString("HH:mm");
+    var (mark, said) = Mark(entry);
+    var title = said is null ? at : $"{at} · {said}";
 
     if (CanEdit)
     {
-        <button class="mark" title="@at" @onclick="() => OnEdit.InvokeAsync(entry)">+</button>
+        <button class="mark @(said is null ? "" : "flag")" title="@title" aria-label="@title"
+                @onclick="() => OnEdit.InvokeAsync(entry)">@mark</button>
     }
     else
     {
-        <span class="mark ro" title="@at">+</span>
+        <span class="mark ro @(said is null ? "" : "flag")" title="@title">@mark</span>
     }
 }
 
@@ -17,4 +23,11 @@
     [Parameter, EditorRequired] public List<BabyEvent> Entries { get; set; } = [];
     [Parameter] public EventCallback<BabyEvent> OnEdit { get; set; }
     [Parameter] public bool CanEdit { get; set; }
+
+    private static (string Mark, string? Said) Mark(BabyEvent e) => e switch
+    {
+        { Kind: EventKind.Poop, Diarrhoea: true } => ("D", "diarrhoea"),
+        { Kind: EventKind.Vomit } => ("V", "vomit"),
+        _ => ("+", null)
+    };
 }

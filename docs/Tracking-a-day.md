@@ -67,8 +67,12 @@ began. A bottle saved in one tap ends where it starts, so there is no difference
 
 ## The three that are moments
 
-**Poop**, **Urine** and **Vomit** are logged at the time you tap them: a single tap and nothing
+**Poop**, **Urine** and **Spit-up** are logged at the time you tap them: a single tap and nothing
 else.
+
+**Spit-up** is milk brought back up after a feed — the everyday kind. Being properly sick is
+**Vomit**, on the [Health](Health) tab, and is counted separately. Everything logged as *Vomit*
+before version 1.26 was a spit-up and now reads as one.
 
 ## Nothing has to be logged as it happens
 

@@ -8,8 +8,19 @@ public enum EventKind
     BottleFeed = 1,
     Poop = 2,
     Urine = 3,
-    Vomit = 4,
-    Sleep = 5
+
+    /// <summary>
+    /// Milk brought back up after a feed — the everyday kind, logged from Track. Called Vomit
+    /// until 1.26; the stored value is unchanged, so every entry from before is one of these.
+    /// </summary>
+    SpitUp = 4,
+    Sleep = 5,
+
+    /// <summary>
+    /// Being sick: the forceful, ill kind, logged from the Health tab. Its own kind rather than a
+    /// flag on a spit-up, because the two are told apart for a reason and counted separately.
+    /// </summary>
+    Vomit = 6
 }
 
 public enum MilkKind

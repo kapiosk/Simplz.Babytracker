@@ -15,7 +15,7 @@
     --bottle: #3f8fd8;
     --poop: #9a6a3c;
     --urine: #d9a521;
-    --vomit: #58a55c;
+    --spitup: #58a55c;
     --sleep: #5b6bbf;
 
     --radius: 18px;
@@ -130,7 +130,7 @@ a { color: var(--accent); }
 /* A recorded one keeps its text at full strength — a milestone reached is not spent, and
    greying it out would read as crossing it off a list, which this deliberately is not. */
 .guide .name.done { color: var(--text); }
-.guide .done-mark { color: var(--vomit); font-size: 1.1rem; display: inline-flex; align-items: center; }
+.guide .done-mark { color: var(--spitup); font-size: 1.1rem; display: inline-flex; align-items: center; }
 .guide .done-mark .icon { width: 1.15rem; height: 1.15rem; }
 
 .event .btn.small { flex: none; align-self: center; }
@@ -181,7 +181,8 @@ a { color: var(--accent); }
 .ico.bottle, .action.bottle .ico { color: var(--bottle); }
 .ico.poop,   .action.poop .ico   { color: var(--poop); }
 .ico.urine,  .action.urine .ico  { color: var(--urine); }
-.ico.vomit,  .action.vomit .ico  { color: var(--vomit); }
+.ico.spitup, .action.spitup .ico { color: var(--spitup); }
+.ico.health, .action.health .ico { color: var(--accent); }
 .ico.sleep,  .action.sleep .ico  { color: var(--sleep); }
 .action.running .ico { color: #fff; }
 
@@ -192,7 +193,8 @@ a { color: var(--accent); }
 .stat.bottle .k .icon, table.grid th.bottle .icon { color: var(--bottle); }
 .stat.poop .k .icon,   table.grid th.poop .icon   { color: var(--poop); }
 .stat.urine .k .icon,  table.grid th.urine .icon  { color: var(--urine); }
-.stat.vomit .k .icon,  table.grid th.vomit .icon  { color: var(--vomit); }
+.stat.spitup .k .icon, table.grid th.spitup .icon { color: var(--spitup); }
+.stat.health .k .icon { color: var(--accent); }
 .stat.sleep .k .icon,  table.grid th.sleep .icon  { color: var(--sleep); }
 table.grid th .icon { margin-left: auto; }
 
@@ -237,7 +239,7 @@ table.grid th .icon { margin-left: auto; }
 .action.bottle { border-left: 8px solid var(--bottle); }
 .action.poop   { border-left: 8px solid var(--poop); }
 .action.urine  { border-left: 8px solid var(--urine); }
-.action.vomit  { border-left: 8px solid var(--vomit); }
+.action.spitup { border-left: 8px solid var(--spitup); }
 .action.sleep  { border-left: 8px solid var(--sleep); }
 
 .action.running { color: #fff; }
@@ -440,7 +442,8 @@ table.grid th .icon { margin-left: auto; }
 .stat.bottle { border-left-color: var(--bottle); }
 .stat.poop   { border-left-color: var(--poop); }
 .stat.urine  { border-left-color: var(--urine); }
-.stat.vomit  { border-left-color: var(--vomit); }
+.stat.spitup { border-left-color: var(--spitup); }
+.stat.health { border-left-color: var(--accent); }
 .stat.sleep  { border-left-color: var(--sleep); }
 
 .stat .k { color: var(--text-dim); font-size: .8rem; font-weight: 600; }
@@ -1221,7 +1224,7 @@ body { padding-top: var(--circuit-banner-h, 0px); }
 
 /* The headline figure on its own card. Pumped milk is breast milk, so it borrows the breast
    colour rather than introducing one: the palette already has six kind colours, teal sits too
-   close to the vomit green to be worth adding, and this page shows one measure at a time so
+   close to the spit-up green to be worth adding, and this page shows one measure at a time so
    nothing here ever has to be told apart by colour. */
 .stock { border-left: 8px solid var(--breast); }
 
@@ -1271,7 +1274,7 @@ body { padding-top: var(--circuit-banner-h, 0px); }
 /* The two figures stand out by weight, not by colour. Colouring them was the first instinct —
    green in, pink out — but at this size (12.5px) the kind colours come to 3.0:1 and 3.3:1 on a
    light card against the 4.5 small text needs, and the plus and minus signs carry the direction
-   perfectly well on their own. Reaching for --vomit to mean "added" was a coincidence of hue
+   perfectly well on their own. Reaching for --spitup to mean "added" was a coincidence of hue
    rather than a meaning, too. */
 .stock-ledger .up,
 .stock-ledger .down { color: var(--text); font-weight: 700; }
@@ -1303,7 +1306,10 @@ body { padding-top: var(--circuit-banner-h, 0px); }
    page is one subject, and nothing on it is told apart by colour. "High" is said in words. */
 .temp-now { border-left: 8px solid var(--accent); }
 .action.health { border-left: 8px solid var(--accent); }
-.action.health .ico, .temp-now .ico, .event.med .ico { color: var(--accent); }
+.temp-now .ico, .event.med .ico { color: var(--accent); }
+
+/* A letter in a chart column — D, V — rather than the plus: see OutputMarks. */
+.mark.flag { font-weight: 800; }
 
 .temp-figure { display: flex; align-items: baseline; gap: .6rem; margin-top: .2rem; }
 .temp-figure .v { font-size: 2.8rem; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.05; }
