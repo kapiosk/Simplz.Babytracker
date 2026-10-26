@@ -42,6 +42,7 @@ builder.Services.AddDbContextFactory<AppDbContext>(options => options.UseSqlite(
 builder.Services.AddSingleton<EventService>();
 builder.Services.AddSingleton<PumpService>();
 builder.Services.AddSingleton<Milestones>();
+builder.Services.AddSingleton<HealthService>();
 builder.Services.AddSingleton<BabyService>();
 builder.Services.AddSingleton<Credentials>();
 

@@ -1,0 +1,619 @@
+@page "/health"
+@rendermode InteractiveServer
+@implements IAsyncDisposable
+@inject HealthService HealthLog
+@inject EventService Events
+@inject BabyService Babies
+@inject ILogger<Health> Logger
+
+<PageTitle>Health · Baby Tracker</PageTitle>
+
+@* Says, from the server, that this page still has a circuit. *@
+<CircuitHeartbeat />
+
+<h1>Health</h1>
+
+@* The last reading first, because "what was it last time, and when" is the question asked at
+   2am with a thermometer in hand. *@
+<div class="card temp-now">
+    <div class="stock-head">
+        <span class="k"><span class="ico"><Icon Name="thermometer" /></span> Temperature</span>
+    </div>
+
+    @if (latest is null)
+    {
+        <div class="stock-empty">No readings in the last @HistoryDays days.</div>
+    }
+    else
+    {
+        <div class="temp-figure">
+            <span class="v">@Display.Celsius(latest.Celsius)</span>
+            @if (HealthService.IsHigh(latest.Celsius))
+            {
+                <span class="tag high">high</span>
+            }
+        </div>
+        <div class="stock-ledger">
+            <span>taken @When(latest.TakenUtc) · @Display.Ago(latest.TakenUtc)@(latest.Method is { } m ? $" · {Display.Method(m)}" : "")</span>
+        </div>
+
+        @if (urgentRule is not null)
+        {
+            @* Quoted, not advised: these are the NHS's own two cases for babies, and the page says
+               where they come from so nobody mistakes it for the app having an opinion. *@
+            <div class="health-note urgent" role="alert">
+                The NHS says to call <b>111 or your GP urgently</b> if a baby is @urgentRule.
+                <a href="https://www.nhs.uk/conditions/fever-in-children/" target="_blank" rel="noopener">NHS: fever in children</a>
+            </div>
+        }
+    }
+</div>
+
+@if (canEdit)
+{
+    <div class="actions">
+        <button class="action health" @onclick="NewReading">
+            <span class="ico"><Icon Name="thermometer" /></span>
+            <span>Temperature</span>
+            <span class="hint">@(latest is null ? "no reading yet" : $"last {Display.Ago(latest.TakenUtc)}")</span>
+        </button>
+        <button class="action poop" @onclick="LogDiarrhoea">
+            <span class="ico"><Icon Name="poop" /></span>
+            <span>Diarrhoea</span>
+            <span class="hint">@(lastDiarrhoea is null ? "none recently" : $"last {Display.Ago(lastDiarrhoea.StartUtc)}")</span>
+        </button>
+    </div>
+}
+
+<div class="section-title">
+    <span>Medicines</span>
+    @if (canEdit)
+    {
+        <button type="button" class="btn small" @onclick="NewMedicine">+ Add</button>
+    }
+</div>
+
+<div class="card">
+    @if (current.Count == 0)
+    {
+        <div class="empty">
+            @(canEdit
+                ? "Nothing being given. Add a medicine from its prescription or label, then record each dose as it is given."
+                : "Nothing being given.")
+        </div>
+    }
+    else
+    {
+        <ul class="events">
+            @foreach (var med in current)
+            {
+                var status = HealthService.Status(med, doses, DateTime.UtcNow);
+                <li class="event med" @key="med.Id">
+                    <span class="ico"><Icon Name="medicine" /></span>
+                    <div class="body">
+                        <div class="name">@med.Name@(med.Dose is { } d ? $" · {d}" : "")</div>
+                        <div class="meta">@RuleLine(med)</div>
+                        <div class="meta">
+                            @if (status.LastUtc is { } last)
+                            {
+                                <text>last @When(last) · @Display.Ago(last)</text>
+                                @if (med.MaxPerDay is { } max)
+                                {
+                                    <text> · @status.InLast24h of @max in 24h</text>
+                                }
+                            }
+                            else
+                            {
+                                <text>not given in the last @HistoryDays days</text>
+                            }
+                        </div>
+                        @if (status.GapEndsUtc is { } until)
+                        {
+                            @* The gap or the daily limit, whichever ends later — both are the label's
+                               own rules, so this says when they stop applying, not what to do. *@
+                            <div class="meta gap">next within the label's limits: @Display.ToLocal(until).ToString("HH:mm")</div>
+                        }
+                    </div>
+                    @if (canEdit)
+                    {
+                        <div class="med-btns">
+                            <button type="button" class="btn small primary" @onclick="() => NewDose(med)">Given</button>
+                            <button type="button" class="icon-btn" @onclick="() => editingMedicine = med"
+                                    title="Edit" aria-label="Edit @med.Name"><Icon Name="pencil" /></button>
+                        </div>
+                    }
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+<div class="section-title">
+    <span>Last @HistoryDays days (@history.Count)</span>
+</div>
+
+<div class="card">
+    @if (history.Count == 0)
+    {
+        <div class="empty">Nothing recorded — which is good news.</div>
+    }
+    else
+    {
+        <ul class="events">
+            @foreach (var item in history)
+            {
+                <li class="event" @key="item.Key">
+                    <span class="ico @item.Css"><Icon Name="@item.Icon" /></span>
+                    <div class="body">
+                        <div class="name">
+                            @item.Name
+                            @if (item.High)
+                            {
+                                <span class="tag high">high</span>
+                            }
+                        </div>
+                        <div class="meta">@item.Meta</div>
+                        @if (!string.IsNullOrWhiteSpace(item.Notes))
+                        {
+                            <div class="notes">@item.Notes</div>
+                        }
+                    </div>
+                    @if (canEdit)
+                    {
+                        <button type="button" class="icon-btn" @onclick="item.Edit"
+                                title="Edit" aria-label="Edit @item.Name"><Icon Name="pencil" /></button>
+                    }
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@if (finished.Count > 0)
+{
+    @* Kept rather than deleted: what was given, and for how long, is exactly what gets asked at
+       the next appointment. Plain <details>, so it opens without a round trip. *@
+    <details class="card finished-meds">
+        <summary>Finished medicines (@finished.Count)</summary>
+        <ul class="events">
+            @foreach (var med in finished)
+            {
+                <li class="event" @key="med.Id">
+                    <span class="ico"><Icon Name="medicine" /></span>
+                    <div class="body">
+                        <div class="name">@med.Name@(med.Dose is { } d ? $" · {d}" : "")</div>
+                        <div class="meta">@(med.EndsOn is { } end ? $"course ended {end:d MMM}" : "finished")@(med.Notes is { } n ? $" · {n}" : "")</div>
+                    </div>
+                    @if (canEdit)
+                    {
+                        <button type="button" class="icon-btn" @onclick="() => editingMedicine = med"
+                                title="Edit" aria-label="Edit @med.Name"><Icon Name="pencil" /></button>
+                    }
+                </li>
+            }
+        </ul>
+    </details>
+}
+
+<p class="login-note">
+    A record to show the GP, 111 or the pharmacist — not advice. The NHS counts 38°C or more as a
+    high temperature; anything here marked <em>high</em> is that and nothing more.
+    Diarrhoea is logged as a poop, so it is in the nappy counts on
+    <NavLink href="report">the report</NavLink> and <NavLink href="chart">the chart</NavLink> too.
+    If you are worried, <a href="https://111.nhs.uk/" target="_blank" rel="noopener">NHS 111</a> is there for exactly that.
+</p>
+
+@if (editingReading is not null)
+{
+    <TemperatureDialog Reading="editingReading" OnCancel="() => editingReading = null"
+                       OnSave="SaveReading" OnDelete="DeleteReading" />
+}
+
+@if (editingMedicine is not null)
+{
+    <MedicineDialog Medicine="editingMedicine" OnCancel="() => editingMedicine = null"
+                    OnSave="SaveMedicine" OnDelete="DeleteMedicine" />
+}
+
+@if (editingDose is { } pending)
+{
+    <DoseDialog Medicine="pending.Medicine" Dose="pending.Dose"
+                Others="doses.Where(d => d.MedicineId == pending.Medicine.Id).ToList()"
+                OnCancel="() => editingDose = null" OnSave="SaveDose" OnDelete="DeleteDose" />
+}
+
+@if (editingEvent is not null)
+{
+    <EditEventDialog Event="editingEvent" CanEdit="canEdit" OnCancel="() => editingEvent = null"
+                     OnSave="SaveEvent" OnDelete="DeleteEvent" />
+}
+
+@if (toastUntil > DateTime.UtcNow)
+{
+    <div class="toast">
+        <span>@toast</span>
+        @if (undo is not null)
+        {
+            <button type="button" class="toast-undo" @onclick="Undo">Undo</button>
+        }
+    </div>
+}
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
+
+    /// <summary>How far back the page reads. A bout of illness, comfortably, and not a lifetime.</summary>
+    private const int HistoryDays = 30;
+
+    private bool canEdit;
+    private Baby? baby;
+
+    private List<TemperatureReading> readings = [];
+    private TemperatureReading? latest;
+    private string? urgentRule;
+    private List<BabyEvent> diarrhoea = [];
+    private BabyEvent? lastDiarrhoea;
+    private List<Medicine> medicines = [];
+    private List<Medicine> current = [];
+    private List<Medicine> finished = [];
+    private List<MedicineDose> doses = [];
+    private List<HistoryItem> history = [];
+
+    private TemperatureReading? editingReading;
+    private Medicine? editingMedicine;
+    private (Medicine Medicine, MedicineDose Dose)? editingDose;
+    private BabyEvent? editingEvent;
+
+    private string? toast;
+    private DateTime toastUntil = DateTime.MinValue;
+    private BabyEvent? undo;
+
+    private CancellationTokenSource? ticker;
+    private readonly SemaphoreSlim wake = new(0, 1);
+
+    /// <summary>One line of the combined history, whichever of the three it came from.</summary>
+    private sealed record HistoryItem(
+        string Key, DateTime Utc, string Icon, string Css, string Name, string Meta, string? Notes, bool High, Action Edit);
+
+    protected override async Task OnInitializedAsync()
+    {
+        canEdit = await Access.CanEditAsync(AuthState);
+        baby = await Babies.SelectedAsync(AuthState);
+        await Reload();
+
+        HealthLog.Changed += OnChanged;
+
+        // Diarrhoea goes through the event log, and so does an edit to it from any other page.
+        Events.Changed += OnChanged;
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender && ticker is null)
+        {
+            ticker = new CancellationTokenSource();
+            _ = TickAsync(ticker.Token);
+        }
+    }
+
+    /// <summary>
+    /// Keeps "40m ago" and the gaps honest. Every half a minute is plenty — nothing here counts
+    /// seconds — except while a toast is up, which has to go away on time.
+    /// </summary>
+    private async Task TickAsync(CancellationToken ct)
+    {
+        try
+        {
+            while (!ct.IsCancellationRequested)
+            {
+                var interval = toastUntil > DateTime.UtcNow ? TimeSpan.FromSeconds(1) : TimeSpan.FromSeconds(30);
+                await wake.WaitAsync(interval, ct);
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private void OnChanged(int babyId)
+    {
+        if (babyId != baby?.Id)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(async () =>
+        {
+            try
+            {
+                await Reload();
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                // Runs because somebody else logged something; an exception escaping here would
+                // take this page's circuit down for a change that was never this phone's doing.
+                Logger.LogError(ex, "Refreshing the health page after a change failed.");
+            }
+        });
+    }
+
+    private async Task Reload()
+    {
+        if (baby is null)
+        {
+            return;
+        }
+
+        var since = DateTime.UtcNow.AddDays(-HistoryDays);
+
+        readings = await HealthLog.TemperaturesAsync(baby.Id, since);
+        latest = readings.FirstOrDefault();
+        urgentRule = latest is null
+            ? null
+            : HealthService.UrgentAgeRule(latest.Celsius, baby.BornOn, DateOnly.FromDateTime(Display.ToLocal(latest.TakenUtc)));
+
+        diarrhoea = (await Events.GetRangeAsync(baby.Id, since, DateTime.UtcNow.AddDays(1)))
+            .Where(e => e.Kind == EventKind.Poop && e.Diarrhoea)
+            .ToList();
+        lastDiarrhoea = diarrhoea.FirstOrDefault();
+
+        medicines = await HealthLog.MedicinesAsync(baby.Id);
+        var today = DateOnly.FromDateTime(DateTime.Now);
+        current = medicines.Where(m => m.IsCurrent(today)).ToList();
+        finished = medicines.Where(m => !m.IsCurrent(today)).ToList();
+
+        // A day further back than the history shows, so a dose just inside the window is still
+        // checked against the one just outside it.
+        doses = await HealthLog.DosesAsync(baby.Id, since.AddDays(-1));
+
+        BuildHistory(since);
+    }
+
+    private void BuildHistory(DateTime sinceUtc)
+    {
+        var byId = medicines.ToDictionary(m => m.Id);
+
+        history =
+        [
+            .. readings.Select(r => new HistoryItem(
+                $"t{r.Id}", r.TakenUtc, "thermometer", "", Display.Celsius(r.Celsius),
+                Stamp(r.TakenUtc) + (r.Method is { } m ? $" · {Display.Method(m)}" : ""),
+                r.Notes, HealthService.IsHigh(r.Celsius), () => editingReading = r)),
+
+            .. diarrhoea.Select(e => new HistoryItem(
+                $"e{e.Id}", e.StartUtc, "poop", "poop", "Diarrhoea", Stamp(e.StartUtc),
+                e.Notes, false, () => editingEvent = e)),
+
+            .. doses.Where(d => d.GivenUtc >= sinceUtc && byId.ContainsKey(d.MedicineId)).Select(d =>
+            {
+                var med = byId[d.MedicineId];
+                var amount = d.Dose ?? med.Dose;
+                return new HistoryItem(
+                    $"d{d.Id}", d.GivenUtc, "medicine", "", amount is null ? med.Name : $"{med.Name} · {amount}",
+                    Stamp(d.GivenUtc), d.Notes, false, () => editingDose = (med, d));
+            })
+        ];
+
+        history = history.OrderByDescending(h => h.Utc).ToList();
+    }
+
+    private static string RuleLine(Medicine med)
+    {
+        var parts = new List<string>(3);
+        if (med.MinHoursBetween is { } h) parts.Add($"at least {Display.Hours(h)} apart");
+        if (med.MaxPerDay is { } max) parts.Add($"up to {max} in 24h");
+        if (med.EndsOn is { } end) parts.Add($"until {end:ddd d MMM}");
+        return parts.Count == 0 ? "no gap or limit given" : string.Join(" · ", parts);
+    }
+
+    /// <summary>Time only for today, which is most of it; the date too for anything older.</summary>
+    private static string Stamp(DateTime utc)
+    {
+        var local = Display.ToLocal(utc);
+        return local.Date == DateTime.Now.Date ? $"{local:HH:mm} · {Display.Ago(utc)}" : local.ToString("ddd d MMM, HH:mm");
+    }
+
+    private static string When(DateTime utc)
+    {
+        var local = Display.ToLocal(utc);
+        var today = DateTime.Now.Date;
+        if (local.Date == today) return local.ToString("HH:mm");
+        if (local.Date == today.AddDays(-1)) return $"yesterday {local:HH:mm}";
+        return local.ToString("ddd d MMM, HH:mm");
+    }
+
+    // ---------- temperature ----------
+
+    private void NewReading()
+    {
+        if (canEdit && baby is not null)
+        {
+            editingReading = new TemperatureReading { BabyId = baby.Id, TakenUtc = DateTime.UtcNow };
+        }
+    }
+
+    private async Task SaveReading(TemperatureReading reading)
+    {
+        editingReading = null;
+        if (!canEdit)
+        {
+            return;
+        }
+
+        var saved = await HealthLog.SaveTemperatureAsync(reading);
+        Toast(saved is null ? "Not saved — that reading is out of range" : $"{Display.Celsius(saved.Celsius)} saved");
+    }
+
+    private async Task DeleteReading(int id)
+    {
+        editingReading = null;
+        if (!canEdit)
+        {
+            return;
+        }
+
+        await HealthLog.DeleteTemperatureAsync(id);
+        Toast("Deleted");
+    }
+
+    // ---------- diarrhoea ----------
+
+    /// <summary>
+    /// One tap, like a nappy on Track — with an Undo, since there is nothing to confirm and a
+    /// mis-tap is the likeliest mistake.
+    /// </summary>
+    private async Task LogDiarrhoea()
+    {
+        if (!canEdit || baby is null)
+        {
+            return;
+        }
+
+        var logged = await Events.LogAsync(baby.Id, EventKind.Poop, diarrhoea: true);
+        Toast("Diarrhoea logged", seconds: 6, undoing: logged);
+    }
+
+    private async Task Undo()
+    {
+        if (undo is not { } logged || !canEdit)
+        {
+            return;
+        }
+
+        undo = null;
+        await Events.DeleteAsync(logged.Id);
+        Toast("Removed");
+    }
+
+    private async Task SaveEvent(BabyEvent updated)
+    {
+        editingEvent = null;
+        if (!canEdit)
+        {
+            return;
+        }
+
+        await Events.UpdateAsync(updated);
+        Toast("Saved");
+    }
+
+    private async Task DeleteEvent(int id)
+    {
+        editingEvent = null;
+        if (!canEdit)
+        {
+            return;
+        }
+
+        await Events.DeleteAsync(id);
+        Toast("Deleted");
+    }
+
+    // ---------- medicines and doses ----------
+
+    private void NewMedicine()
+    {
+        if (canEdit && baby is not null)
+        {
+            editingMedicine = new Medicine { BabyId = baby.Id };
+        }
+    }
+
+    private async Task SaveMedicine(Medicine medicine)
+    {
+        editingMedicine = null;
+        if (!canEdit)
+        {
+            return;
+        }
+
+        var saved = await HealthLog.SaveMedicineAsync(medicine);
+        Toast(saved is null ? "Not saved — it needs a name" : $"{saved.Name} saved");
+    }
+
+    private async Task DeleteMedicine(int id)
+    {
+        editingMedicine = null;
+        if (!canEdit)
+        {
+            return;
+        }
+
+        await HealthLog.DeleteMedicineAsync(id);
+        Toast("Deleted");
+    }
+
+    private void NewDose(Medicine medicine)
+    {
+        if (canEdit)
+        {
+            editingDose = (medicine, new MedicineDose { MedicineId = medicine.Id, GivenUtc = DateTime.UtcNow });
+        }
+    }
+
+    private async Task SaveDose(MedicineDose dose)
+    {
+        var name = editingDose?.Medicine.Name;
+        editingDose = null;
+        if (!canEdit)
+        {
+            return;
+        }
+
+        await HealthLog.SaveDoseAsync(dose);
+        Toast(dose.Id == 0 ? $"{name} · given {Display.ToLocal(dose.GivenUtc):HH:mm}" : "Saved");
+    }
+
+    private async Task DeleteDose(int id)
+    {
+        editingDose = null;
+        if (!canEdit)
+        {
+            return;
+        }
+
+        await HealthLog.DeleteDoseAsync(id);
+        Toast("Deleted");
+    }
+
+    private void Toast(string message, double seconds = 2.5, BabyEvent? undoing = null)
+    {
+        toast = message;
+        toastUntil = DateTime.UtcNow.AddSeconds(seconds);
+        undo = undoing;
+        Wake();
+    }
+
+    private void Wake()
+    {
+        try
+        {
+            wake.Release();
+        }
+        catch (SemaphoreFullException)
+        {
+            // Already due to wake.
+        }
+        catch (ObjectDisposedException)
+        {
+            // The page has gone.
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        HealthLog.Changed -= OnChanged;
+        Events.Changed -= OnChanged;
+
+        if (ticker is not null)
+        {
+            await ticker.CancelAsync();
+            ticker.Dispose();
+            ticker = null;
+        }
+
+        wake.Dispose();
+    }
+}

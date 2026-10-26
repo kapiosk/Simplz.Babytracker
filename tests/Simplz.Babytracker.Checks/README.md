@@ -17,7 +17,7 @@ first written as a throwaway in a scratch folder, and lost with it; living here 
 ## Adding to it
 
 Each area is one class with a `RunAsync(Harness h)` — sleep, bottles, pause, the editor, stock,
-display, the average day, milestones. Add a check to the area it belongs to, or a new class and a
+display, the average day, milestones, health. Add a check to the area it belongs to, or a new class and a
 line in `Program.cs`.
 
 - Call `h.ResetAsync()` at the start of a group, so it never depends on what ran before it.

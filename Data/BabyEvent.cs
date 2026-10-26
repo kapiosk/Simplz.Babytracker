@@ -77,6 +77,13 @@ public class BabyEvent
     public string? Notes { get; set; }
 
     /// <summary>
+    /// Only used by a poop: that it was diarrhoea. A flag on the poop rather than a kind of its
+    /// own, because it is still a dirty nappy — the nappy count, the chart and the report all go
+    /// on counting it, and the Health page is where the flag is set and read.
+    /// </summary>
+    public bool Diarrhoea { get; set; }
+
+    /// <summary>
     /// The kinds that are a stretch of time rather than a moment, and so are started and stopped.
     /// Only one of them runs at a time: a baby cannot be feeding and asleep at once, so starting
     /// either ends the other. An array rather than a pattern so a query can use it too.

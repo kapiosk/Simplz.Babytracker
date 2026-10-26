@@ -61,6 +61,23 @@
             <path d="M15.4 6.6h5.1v5.1" />
             break;
 
+        case "health":
+            @* A cross: the tab as a whole, which is temperatures and medicines both. *@
+            <path d="M9.5 4h5v5.5H20v5h-5.5V20h-5v-5.5H4v-5h5.5z" />
+            break;
+
+        case "thermometer":
+            @* A tube into a bulb, with the reading as a line up the middle. *@
+            <path d="M14 14.6V5a2 2 0 0 0-4 0v9.6a4 4 0 1 0 4 0z" />
+            <path d="M12 9.5v7.5" />
+            break;
+
+        case "medicine":
+            @* A capsule on the diagonal, split across the middle. *@
+            <rect x="3.2" y="8.6" width="17.6" height="6.8" rx="3.4" transform="rotate(-45 12 12)" />
+            <path d="M9.6 9.6l4.8 4.8" />
+            break;
+
         case "pencil":
             <path d="M4.5 20.2h4.1L19.2 9.6a2.3 2.3 0 0 0-3.3-3.3L5.3 16.9l-.8 3.3z" />
             <path d="M14.8 7.6l3.3 3.3" />

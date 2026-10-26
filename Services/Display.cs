@@ -49,12 +49,42 @@ public static class Display
             MilkKind.BreastMilk => "Bottle · breast milk",
             _ => "Bottle"
         },
+        EventKind.Poop when e.Diarrhoea => "Poop · diarrhoea",
         EventKind.Poop => "Poop",
         EventKind.Urine => "Urine",
         EventKind.Vomit => "Vomit",
         EventKind.Sleep => "Sleep",
         _ => e.Kind.ToString()
     };
+
+    /// <summary>"38.4°C" — always one decimal, as a thermometer shows it.</summary>
+    public static string Celsius(double value) =>
+        $"{value.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)}°C";
+
+    public static string Method(TemperatureMethod method) => method switch
+    {
+        TemperatureMethod.Ear => "ear",
+        TemperatureMethod.Forehead => "forehead",
+        _ => "underarm"
+    };
+
+    /// <summary>
+    /// Hours as people say them: "4h", "4½h", "1h 15m". A gap between doses is usually a whole
+    /// or a half hour, and "4.5h" reads like a measurement rather than an instruction.
+    /// </summary>
+    public static string Hours(double hours)
+    {
+        var minutes = (int)Math.Round(hours * 60);
+        var h = minutes / 60;
+        var m = minutes % 60;
+        return m switch
+        {
+            0 => $"{h}h",
+            30 => $"{h}½h",
+            _ when h == 0 => $"{m}m",
+            _ => $"{h}h {m:00}m"
+        };
+    }
 
     public static string Label(EventKind kind) => kind switch
     {

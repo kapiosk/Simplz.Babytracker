@@ -1297,6 +1297,62 @@ body { padding-top: var(--circuit-banner-h, 0px); }
 
 .stock-warn { color: var(--danger); }
 
+/* ---------- health ---------- */
+
+/* The neutral accent, because there is no kind colour left to give it — and none is needed: the
+   page is one subject, and nothing on it is told apart by colour. "High" is said in words. */
+.temp-now { border-left: 8px solid var(--accent); }
+.action.health { border-left: 8px solid var(--accent); }
+.action.health .ico, .temp-now .ico, .event.med .ico { color: var(--accent); }
+
+.temp-figure { display: flex; align-items: baseline; gap: .6rem; margin-top: .2rem; }
+.temp-figure .v { font-size: 2.8rem; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.05; }
+
+/* A word in a pill, so a high reading is marked by what it says rather than by turning red. */
+.tag {
+    display: inline-block;
+    padding: .05rem .5rem;
+    border-radius: 999px;
+    font-size: .72rem;
+    font-weight: 800;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+    vertical-align: .1em;
+}
+
+.tag.high { border: 1.5px solid var(--danger); color: var(--danger); }
+
+.health-note {
+    margin-top: .75rem;
+    padding: .7rem .8rem;
+    border-radius: 12px;
+    background: var(--surface-2);
+    font-size: .85rem;
+    line-height: 1.5;
+}
+
+.health-note.urgent { border-left: 4px solid var(--danger); }
+.health-note a { display: block; margin-top: .3rem; font-weight: 700; color: var(--accent); }
+
+.warn-line {
+    margin-top: .45rem;
+    padding: .55rem .7rem;
+    border-radius: 10px;
+    border-left: 4px solid var(--danger);
+    background: var(--surface-2);
+    color: var(--text);
+    font-size: .85rem;
+    line-height: 1.45;
+}
+
+.med-btns { display: flex; align-items: center; gap: .1rem; align-self: center; }
+.event .meta.gap { color: var(--text); font-weight: 600; }
+
+.choice.three { grid-template-columns: repeat(3, 1fr); }
+
+.finished-meds summary { cursor: pointer; font-weight: 700; padding: .2rem 0; }
+.finished-meds[open] summary { margin-bottom: .4rem; }
+
 /* Room under the heading of a sheet that explains itself before it asks anything. */
 .sheet-hint { margin-top: -.25rem; margin-bottom: .9rem; }
 

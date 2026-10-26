@@ -5,8 +5,8 @@
     <div>
         <div class="title">Baby Tracker</div>
         @* The age doubles as the way in to the milestones. It is the only route besides the
-           Babies screen, which keeps the nav at five tabs — a sixth would be cramped on a
-           phone, and this is a thing looked at now and then rather than every feed. *@
+           Babies screen: milestones are looked at now and then rather than every feed, and the
+           nav's sixth place went to Health, which is needed in a hurry when it is needed. *@
         <div class="sub">
             @DateTime.Now.ToString("dddd d MMMM")
             @if (selected?.BornOn is { } born)
@@ -105,6 +105,11 @@
     <NavLink href="trends">
         <span class="ico"><Icon Name="trend" /></span>
         Trends
+    </NavLink>
+    @* Six across a 375px phone is about 62px a tab, and "Health" is no wider than "Report". *@
+    <NavLink href="health">
+        <span class="ico"><Icon Name="health" /></span>
+        Health
     </NavLink>
 </nav>
 

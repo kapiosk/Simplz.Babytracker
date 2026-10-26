@@ -16,6 +16,7 @@ first screen is one tap.
 | **Chart** | One row per feed with the nappies and spit-ups recorded against it, like the paper chart from the hospital. |
 | **Report** | Totals over a day, a week, a month or any range you pick, plus every entry in it. |
 | **Trends** | The same measures drawn as bars, so a week or a month has a shape you can see. |
+| **Health** | Temperatures, diarrhoea, and medicines with every dose given — for when the baby is unwell. |
 
 The person icon in the header leads to **Babies**, which is also where passwords, the theme,
 the birth date and *What's new* are. Once a birth date is set, the age appears beside the date in
@@ -25,6 +26,7 @@ the header and tapping it opens [the milestones](Age-and-milestones).
 
 - **[Tracking a day](Tracking-a-day)** — the buttons, timers, and fixing an entry afterwards
 - **[Pumping](Pumping)** — sessions, and the fridge count that works itself out
+- **[Health](Health)** — temperatures, diarrhoea, medicines and doses
 - **[Age and milestones](Age-and-milestones)** — the age in the header, and what to record
 - **[The chart and the report](Chart-and-report)** — how to read them, and what the groupings mean
 - **[Photos and video](Photos-and-video)** — attaching them, and who can see them

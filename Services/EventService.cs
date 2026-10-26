@@ -301,9 +301,18 @@ public class EventService(IDbContextFactory<AppDbContext> factory, MediaService 
     }
 
     /// <summary>Logs a point-in-time event (poop, urine, vomit).</summary>
-    public async Task<BabyEvent> LogAsync(int babyId, EventKind kind, string? notes = null, CancellationToken ct = default)
+    /// <param name="diarrhoea">Only meaningful on a poop, and ignored on anything else.</param>
+    public async Task<BabyEvent> LogAsync(
+        int babyId, EventKind kind, string? notes = null, bool diarrhoea = false, CancellationToken ct = default)
     {
-        var ev = new BabyEvent { BabyId = babyId, Kind = kind, StartUtc = DateTime.UtcNow, Notes = notes };
+        var ev = new BabyEvent
+        {
+            BabyId = babyId,
+            Kind = kind,
+            StartUtc = DateTime.UtcNow,
+            Notes = notes,
+            Diarrhoea = diarrhoea && kind == EventKind.Poop
+        };
         await using var db = await factory.CreateDbContextAsync(ct);
         db.Events.Add(ev);
         await db.SaveChangesAsync(ct);
@@ -391,6 +400,9 @@ public class EventService(IDbContextFactory<AppDbContext> factory, MediaService 
         ev.AmountMl = updated.AmountMl;
         ev.MilkTime = updated.Milk == MilkKind.BreastMilk ? updated.MilkTime : null;
         ev.Notes = updated.Notes;
+
+        // Only a poop can be diarrhoea; changing an entry into anything else drops it.
+        ev.Diarrhoea = updated.Kind == EventKind.Poop && updated.Diarrhoea;
 
         // The pause carries too, because the editor is what decides it now. Moving the stop time
         // of a paused feed has to put the difference into the pause rather than take it off the

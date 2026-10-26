@@ -37,7 +37,7 @@
     <div class="stat poop">
         <div class="k"><Icon Name="poop" /> Poops</div>
         <div class="v">@Count(EventKind.Poop)</div>
-        <div class="x">@PerDay(Count(EventKind.Poop))</div>
+        <div class="x">@PerDay(Count(EventKind.Poop))@(Diarrhoea > 0 ? $" · {Diarrhoea} diarrhoea" : "")</div>
     </div>
     <div class="stat urine">
         <div class="k"><Icon Name="urine" /> Urine</div>
@@ -283,6 +283,9 @@
     }
 
     private int Count(EventKind kind) => events.Count(e => e.Kind == kind);
+
+    /// <summary>Counted among the poops, and said beside them — see the Health page.</summary>
+    private int Diarrhoea => events.Count(e => e.Kind == EventKind.Poop && e.Diarrhoea);
 
     private static string Num(int value) => value == 0 ? "–" : value.ToString();
 

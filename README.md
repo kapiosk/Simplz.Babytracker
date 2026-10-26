@@ -62,6 +62,13 @@ what a flex row already is, the colours come from the theme, and nothing has to 
 
 Both pages are live: log something on one phone and any other open phone updates itself.
 
+**Health** (`/health`) — for when the baby is unwell. Temperature readings with when and where they
+were taken, marked *high* at the NHS's 38°C; diarrhoea as a poop with a flag, so it still counts as
+a nappy everywhere else; and medicines copied from the label, each dose recorded through a sheet
+that warns — before saving — when it breaks the label's own gap or daily limit. Nothing on it is
+advice: the only guidance shown is the NHS's own two urgent cases for babies, quoted and linked.
+See [docs/Health.md](docs/Health.md).
+
 ## Light and dark
 
 **Babies → Appearance** offers light, dark, or following whatever the phone is set to, which is
@@ -250,11 +257,12 @@ notice to appear.
 | `Services/Display.cs` | UTC↔local conversion and the shared label/duration formatting |
 | `Services/ChartGrouping.cs` | Rebuilds the flat log into paper-chart rows (feed + its outputs) |
 | `Services/Changelog.cs` | The releases the *What's new* notice and page are built from |
+| `Services/HealthService.cs` | Temperatures, medicines and doses, and the dose rules (`Status`, `Check`) as pure functions |
 | `Services/BabyService.cs` | The babies, and which one a device has selected (a claim on the sign-in cookie) |
 | `Services/MediaService.cs` | The photos and clips: the files on the volume and the rows that point at them |
 | `Services/Auth.cs` | The roles, the configured passwords, and the check the pages use before rendering anything that writes |
 | `Services/Credentials.cs` | Which password lets you in: stored and hashed if it has been changed, from the configuration if not |
-| `Components/Pages/` | `Home.razor` (the buttons), `Chart.razor`, `Report.razor`, `Trends.razor`, `ManageBabies.razor`, `Password.razor`, `WhatsNew.razor`, `Login.razor` |
+| `Components/Pages/` | `Home.razor` (the buttons), `Chart.razor`, `Report.razor`, `Trends.razor`, `ManageBabies.razor`, `Password.razor`, `WhatsNew.razor`, `Login.razor`, `Health.razor`, `Pump.razor`, `BabyMilestones.razor` |
 | `Components/` | `EventList`, `BottleDialog`, `EditEventDialog`, `TimeField`, `RangePicker`, `BarChart`, `OutputMarks`, `CircuitHeartbeat`, `Icon` |
 | `tests/Simplz.Babytracker.Checks/` | The checks — see [Checking a change](#checking-a-change) |
 | `wwwroot/` | `app.css`, `theme.js`, `circuit-watchdog.js`, `media-upload.js`, `whats-new.js`, `manifest.webmanifest`, `service-worker.js`, `offline.html`, icons |

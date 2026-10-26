@@ -1,0 +1,147 @@
+@* Recording one dose. Asked rather than logged in one tap, for two reasons: a dose given twice
+   by mistake is the one entry in this app that matters if it is wrong, and this is where the
+   medicine's own rules get checked against what has already been given — before it is saved,
+   and in words, with the time still there to change. *@
+
+<div class="sheet-backdrop" @onclick="() => OnCancel.InvokeAsync()">
+    <div class="sheet" @onclick:stopPropagation="true">
+        <h2><span class="ico"><Icon Name="medicine" /></span> @Medicine.Name</h2>
+
+        @if (!string.IsNullOrWhiteSpace(Rules))
+        {
+            <div class="hint-line sheet-hint">@Rules</div>
+        }
+
+        <TimeField Id="dose-given" Label="Given" Value="@givenText" ValueChanged="v => givenText = v" />
+
+        @if (Checked is { } check)
+        {
+            @if (check.TooClose && check.Nearest is { } near)
+            {
+                <div class="warn-line" role="alert">
+                    Only @Display.Duration(Gap(near)) from the dose at @Display.ToLocal(near.GivenUtc).ToString("HH:mm")
+                    — the label says at least @Display.Hours(Medicine.MinHoursBetween!.Value) apart.
+                </div>
+            }
+            @if (check.OverMax)
+            {
+                <div class="warn-line" role="alert">
+                    That makes @check.MostIn24h in 24 hours — the label says no more than @Medicine.MaxPerDay.
+                </div>
+            }
+            @if (!check.TooClose && !check.OverMax && check.Nearest is { } last)
+            {
+                <div class="hint-line">
+                    @Display.Duration(Gap(last)) from the nearest other dose · @check.MostIn24h in 24 hours with this one
+                </div>
+            }
+        }
+
+        <div class="field">
+            <label for="dose-amount">Dose</label>
+            <input id="dose-amount" type="text" maxlength="60" @bind="dose"
+                   placeholder="@(Medicine.Dose ?? "as on the label")" />
+            @if (!string.IsNullOrWhiteSpace(Medicine.Dose))
+            {
+                <div class="hint-line">Leave it empty for the usual @Medicine.Dose.</div>
+            }
+        </div>
+
+        <div class="field">
+            <label for="dose-notes">Notes</label>
+            <input id="dose-notes" type="text" maxlength="500" @bind="notes" placeholder="e.g. spat some out" />
+        </div>
+
+        @if (confirmDelete)
+        {
+            <div class="row-btns">
+                <button type="button" class="btn" @onclick="() => confirmDelete = false">Keep</button>
+                <button type="button" class="btn danger" @onclick="() => OnDelete.InvokeAsync(Dose.Id)">Delete for good</button>
+            </div>
+        }
+        else
+        {
+            <div class="row-btns">
+                @if (!IsNew)
+                {
+                    <button type="button" class="btn danger" @onclick="() => confirmDelete = true">Delete</button>
+                }
+                <button type="button" class="btn" @onclick="() => OnCancel.InvokeAsync()">Cancel</button>
+                <button type="button" class="btn primary" disabled="@(TimeField.Parse(givenText) is null)" @onclick="Save">
+                    @(Checked is { TooClose: true } or { OverMax: true } ? "Record anyway" : IsNew ? "Given" : "Save")
+                </button>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Medicine Medicine { get; set; } = default!;
+
+    [Parameter, EditorRequired] public MedicineDose Dose { get; set; } = default!;
+
+    /// <summary>This medicine's other doses — enough of them to cover a day either side.</summary>
+    [Parameter] public IReadOnlyList<MedicineDose> Others { get; set; } = [];
+
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    [Parameter] public EventCallback<MedicineDose> OnSave { get; set; }
+
+    [Parameter] public EventCallback<int> OnDelete { get; set; }
+
+    private string givenText = "";
+    private string? dose;
+    private string? notes;
+    private bool confirmDelete;
+    private int loadedId = -1;
+
+    private bool IsNew => Dose.Id == 0;
+
+    private string Rules
+    {
+        get
+        {
+            var parts = new List<string>(3);
+            if (!string.IsNullOrWhiteSpace(Medicine.Dose)) parts.Add(Medicine.Dose);
+            if (Medicine.MinHoursBetween is { } h) parts.Add($"at least {Display.Hours(h)} apart");
+            if (Medicine.MaxPerDay is { } max) parts.Add($"no more than {max} in 24 hours");
+            return string.Join(" · ", parts);
+        }
+    }
+
+    /// <summary>Measured at whatever time is in the box, so moving it re-checks straight away.</summary>
+    private DoseCheck? Checked =>
+        TimeField.Parse(givenText) is { } local
+            ? HealthService.Check(Medicine, Others.Where(d => d.Id != Dose.Id), Display.ToUtc(local))
+            : null;
+
+    private TimeSpan Gap(MedicineDose other) =>
+        TimeField.Parse(givenText) is { } local
+            ? (Display.ToUtc(local) - other.GivenUtc).Duration()
+            : TimeSpan.Zero;
+
+    protected override void OnParametersSet()
+    {
+        if (loadedId == Dose.Id && loadedId != -1)
+        {
+            return;
+        }
+
+        loadedId = Dose.Id;
+        givenText = TimeField.ToText(Display.ToLocal(Dose.GivenUtc));
+        dose = Dose.Dose;
+        notes = Dose.Notes;
+        confirmDelete = false;
+    }
+
+    private Task Save() => TimeField.Parse(givenText) is not { } local
+        ? Task.CompletedTask
+        : OnSave.InvokeAsync(new MedicineDose
+        {
+            Id = Dose.Id,
+            MedicineId = Medicine.Id,
+            GivenUtc = Display.ToUtc(local),
+            Dose = string.IsNullOrWhiteSpace(dose) ? null : dose.Trim(),
+            Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim()
+        });
+}
