@@ -1,0 +1,158 @@
+@using System.Globalization
+
+@* One temperature reading: what it said, when, and where the thermometer went.
+   The figure starts empty rather than on a guess — a reading pre-filled with 37.0 is one tap
+   away from being saved without anybody having read a thermometer. *@
+
+<div class="sheet-backdrop" @onclick="() => OnCancel.InvokeAsync()">
+    <div class="sheet" @onclick:stopPropagation="true">
+        <h2><span class="ico"><Icon Name="thermometer" /></span> @(IsNew ? "Temperature" : "Edit reading")</h2>
+
+        <div class="field">
+            <label for="temp-value">Temperature (°C)</label>
+            <input id="temp-value" type="number" inputmode="decimal" min="@HealthService.LowestReading"
+                   max="@HealthService.HighestReading" step="0.1" placeholder="e.g. 37.4"
+                   value="@ValueText" @oninput="e => Read(e.Value?.ToString())" />
+
+            <div class="amounts">
+                @foreach (var preset in Presets)
+                {
+                    <button type="button" class="chip @(celsius == preset ? "on" : "")"
+                            @onclick="() => celsius = preset">@preset.ToString("0.0", CultureInfo.InvariantCulture)</button>
+                }
+            </div>
+            <div class="nudges">
+                <button type="button" class="chip" @onclick="() => Nudge(-0.1)">−0.1</button>
+                <button type="button" class="chip" @onclick="() => Nudge(0.1)">+0.1</button>
+            </div>
+
+            @if (celsius is { } c)
+            {
+                <div class="hint-line @(HealthService.Plausible(c) ? "" : "warn-line")">
+                    @(!HealthService.Plausible(c)
+                        ? $"That is outside what a thermometer reads on a baby — check the figure. It cannot be saved below {HealthService.LowestReading:0} or above {HealthService.HighestReading:0}."
+                        : HealthService.IsHigh(c)
+                            ? $"{Display.Celsius(c)} is a high temperature — the NHS counts 38°C or more as one."
+                            : $"{Display.Celsius(c)} — under the 38°C the NHS counts as high.")
+                </div>
+            }
+        </div>
+
+        <TimeField Id="temp-taken" Label="Taken" Value="@takenText" ValueChanged="v => takenText = v" />
+
+        <div class="field">
+            <label>Where?</label>
+            <div class="choice three">
+                @foreach (var m in Enum.GetValues<TemperatureMethod>())
+                {
+                    <button type="button" class="@(method == m ? "on" : "")"
+                            @onclick="() => method = method == m ? null : m">@Capital(Display.Method(m))</button>
+                }
+            </div>
+        </div>
+
+        <div class="field">
+            <label for="temp-notes">Notes</label>
+            <input id="temp-notes" type="text" maxlength="500" @bind="notes" placeholder="e.g. after Calpol, flushed, off feeds" />
+        </div>
+
+        @if (confirmDelete)
+        {
+            <div class="row-btns">
+                <button type="button" class="btn" @onclick="() => confirmDelete = false">Keep</button>
+                <button type="button" class="btn danger" @onclick="() => OnDelete.InvokeAsync(Reading.Id)">Delete for good</button>
+            </div>
+        }
+        else
+        {
+            <div class="row-btns">
+                @if (!IsNew)
+                {
+                    <button type="button" class="btn danger" @onclick="() => confirmDelete = true">Delete</button>
+                }
+                <button type="button" class="btn" @onclick="() => OnCancel.InvokeAsync()">Cancel</button>
+                <button type="button" class="btn primary" disabled="@(!CanSave)" @onclick="Save">Save</button>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public TemperatureReading Reading { get; set; } = default!;
+
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    [Parameter] public EventCallback<TemperatureReading> OnSave { get; set; }
+
+    [Parameter] public EventCallback<int> OnDelete { get; set; }
+
+    private static readonly double[] Presets = [36.5, 37.0, 37.5, 38.0, 38.5, 39.0];
+
+    private double? celsius;
+    private string takenText = "";
+    private TemperatureMethod? method;
+    private string? notes;
+    private bool confirmDelete;
+    private int loadedId = -1;
+
+    private bool IsNew => Reading.Id == 0;
+
+    private bool CanSave => celsius is { } c && HealthService.Plausible(c) && TimeField.Parse(takenText) is not null;
+
+    private string ValueText => celsius?.ToString("0.0", CultureInfo.InvariantCulture) ?? "";
+
+    protected override void OnParametersSet()
+    {
+        if (loadedId == Reading.Id && loadedId != -1)
+        {
+            return;
+        }
+
+        loadedId = Reading.Id;
+        celsius = IsNew ? null : Reading.Celsius;
+        takenText = TimeField.ToText(Display.ToLocal(Reading.TakenUtc));
+        method = Reading.Method;
+        notes = Reading.Notes;
+        confirmDelete = false;
+    }
+
+    /// <summary>
+    /// Read by hand rather than bound, so a comma typed by a phone set to a European keyboard
+    /// counts the same as a point, and a half-typed "38." is not thrown away mid-word.
+    /// </summary>
+    private void Read(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            celsius = null;
+            return;
+        }
+
+        if (double.TryParse(text.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
+        {
+            celsius = Math.Round(value, 1);
+        }
+    }
+
+    private void Nudge(double by) => celsius = Math.Round((celsius ?? 37.0) + by, 1);
+
+    private static string Capital(string word) => char.ToUpperInvariant(word[0]) + word[1..];
+
+    private Task Save()
+    {
+        if (!CanSave)
+        {
+            return Task.CompletedTask;
+        }
+
+        return OnSave.InvokeAsync(new TemperatureReading
+        {
+            Id = Reading.Id,
+            BabyId = Reading.BabyId,
+            Celsius = celsius!.Value,
+            TakenUtc = Display.ToUtc(TimeField.Parse(takenText)!.Value),
+            Method = method,
+            Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim()
+        });
+    }
+}

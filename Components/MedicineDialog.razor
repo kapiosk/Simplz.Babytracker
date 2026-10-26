@@ -1,0 +1,142 @@
+@using System.Globalization
+
+@* A medicine as the prescription or the label gives it. Every rule is optional and typed in
+   from what is written down — nothing is suggested, because a dose is not this app's to give. *@
+
+<div class="sheet-backdrop" @onclick="() => OnCancel.InvokeAsync()">
+    <div class="sheet" @onclick:stopPropagation="true">
+        <h2><span class="ico"><Icon Name="medicine" /></span> @(IsNew ? "Add a medicine" : "Edit medicine")</h2>
+
+        <div class="hint-line sheet-hint">
+            Copy it from the prescription or the label. The gap and the daily limit are only used to
+            warn you before a dose that would break them.
+        </div>
+
+        <div class="field">
+            <label for="med-name">Name</label>
+            <input id="med-name" type="text" maxlength="80" @bind="name" @bind:event="oninput"
+                   placeholder="e.g. Infant paracetamol" />
+        </div>
+
+        <div class="field">
+            <label for="med-dose">Dose</label>
+            <input id="med-dose" type="text" maxlength="60" @bind="dose" placeholder="e.g. 2.5 ml" />
+        </div>
+
+        <div class="field">
+            <label for="med-gap">At least this many hours apart</label>
+            <input id="med-gap" type="number" inputmode="decimal" min="0" max="72" step="0.5"
+                   value="@(gap?.ToString(CultureInfo.InvariantCulture))" @oninput="e => gap = Number(e.Value?.ToString())"
+                   placeholder="leave empty if the label does not say" />
+        </div>
+
+        <div class="field">
+            <label for="med-max">No more than this many in 24 hours</label>
+            <input id="med-max" type="number" inputmode="numeric" min="0" max="24" step="1" @bind="maxPerDay"
+                   placeholder="leave empty if the label does not say" />
+        </div>
+
+        <div class="field">
+            <label for="med-ends">Course ends on</label>
+            <input id="med-ends" type="date" @bind="endsOn" />
+            <div class="hint-line">For something prescribed for so many days. It moves to Finished the day after.</div>
+        </div>
+
+        <div class="field">
+            <label for="med-notes">What it is for, who prescribed it</label>
+            <input id="med-notes" type="text" maxlength="500" @bind="notes" />
+        </div>
+
+        @if (!IsNew)
+        {
+            <div class="field">
+                <div class="choice">
+                    <button type="button" class="@(finished ? "" : "on")" @onclick="() => finished = false">Being given</button>
+                    <button type="button" class="@(finished ? "on" : "")" @onclick="() => finished = true">Finished</button>
+                </div>
+            </div>
+        }
+
+        @if (confirmDelete)
+        {
+            <div class="hint-line warn-line">
+                This deletes every dose of it too. To keep the history, mark it Finished instead.
+            </div>
+            <div class="row-btns">
+                <button type="button" class="btn" @onclick="() => confirmDelete = false">Keep</button>
+                <button type="button" class="btn danger" @onclick="() => OnDelete.InvokeAsync(Medicine.Id)">Delete for good</button>
+            </div>
+        }
+        else
+        {
+            <div class="row-btns">
+                @if (!IsNew)
+                {
+                    <button type="button" class="btn danger" @onclick="() => confirmDelete = true">Delete</button>
+                }
+                <button type="button" class="btn" @onclick="() => OnCancel.InvokeAsync()">Cancel</button>
+                <button type="button" class="btn primary" disabled="@string.IsNullOrWhiteSpace(name)" @onclick="Save">Save</button>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Medicine Medicine { get; set; } = default!;
+
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    [Parameter] public EventCallback<Medicine> OnSave { get; set; }
+
+    [Parameter] public EventCallback<int> OnDelete { get; set; }
+
+    private string? name;
+    private string? dose;
+    private double? gap;
+    private int? maxPerDay;
+    private DateOnly? endsOn;
+    private string? notes;
+    private bool finished;
+    private bool confirmDelete;
+    private int loadedId = -1;
+
+    private bool IsNew => Medicine.Id == 0;
+
+    protected override void OnParametersSet()
+    {
+        if (loadedId == Medicine.Id && loadedId != -1)
+        {
+            return;
+        }
+
+        loadedId = Medicine.Id;
+        name = Medicine.Name;
+        dose = Medicine.Dose;
+        gap = Medicine.MinHoursBetween;
+        maxPerDay = Medicine.MaxPerDay;
+        endsOn = Medicine.EndsOn;
+        notes = Medicine.Notes;
+        finished = Medicine.Finished;
+        confirmDelete = false;
+    }
+
+    private static double? Number(string? text) =>
+        double.TryParse(text?.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var value) && value > 0
+            ? value
+            : null;
+
+    private Task Save() => string.IsNullOrWhiteSpace(name)
+        ? Task.CompletedTask
+        : OnSave.InvokeAsync(new Medicine
+        {
+            Id = Medicine.Id,
+            BabyId = Medicine.BabyId,
+            Name = name.Trim(),
+            Dose = dose,
+            MinHoursBetween = gap,
+            MaxPerDay = maxPerDay,
+            EndsOn = endsOn,
+            Finished = finished,
+            Notes = notes
+        });
+}

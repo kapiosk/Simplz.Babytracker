@@ -24,7 +24,7 @@ public sealed class Harness
 
     private Harness(
         string folder, IDbContextFactory<AppDbContext> factory, EventService events, PumpService pump,
-        Milestones milestones, BabyService babies, int babyId)
+        Milestones milestones, BabyService babies, HealthService health, int babyId)
     {
         this.folder = folder;
         Factory = factory;
@@ -32,6 +32,7 @@ public sealed class Harness
         Pump = pump;
         Milestones = milestones;
         Babies = babies;
+        Health = health;
         BabyId = babyId;
     }
 
@@ -40,6 +41,7 @@ public sealed class Harness
     public PumpService Pump { get; }
     public Milestones Milestones { get; }
     public BabyService Babies { get; }
+    public HealthService Health { get; }
 
     /// <summary>The baby the migration creates, which every check records against.</summary>
     public int BabyId { get; }
@@ -61,6 +63,7 @@ public sealed class Harness
         services.AddSingleton<PumpService>();
         services.AddSingleton<Milestones>();
         services.AddSingleton<BabyService>();
+        services.AddSingleton<HealthService>();
 
         var sp = services.BuildServiceProvider();
         var factory = sp.GetRequiredService<IDbContextFactory<AppDbContext>>();
@@ -76,7 +79,7 @@ public sealed class Harness
             folder, factory,
             sp.GetRequiredService<EventService>(), sp.GetRequiredService<PumpService>(),
             sp.GetRequiredService<Milestones>(), sp.GetRequiredService<BabyService>(),
-            babyId);
+            sp.GetRequiredService<HealthService>(), babyId);
     }
 
     public void Section(string name)
@@ -125,6 +128,9 @@ public sealed class Harness
         await db.Events.ExecuteDeleteAsync();
         await db.PumpEntries.ExecuteDeleteAsync();
         await db.Milestones.ExecuteDeleteAsync();
+        await db.MedicineDoses.ExecuteDeleteAsync();
+        await db.Medicines.ExecuteDeleteAsync();
+        await db.Temperatures.ExecuteDeleteAsync();
         await db.Babies.Where(b => b.Id != BabyId).ExecuteDeleteAsync();
         await db.Babies.Where(b => b.Id == BabyId).ExecuteUpdateAsync(s => s.SetProperty(b => b.BornOn, (DateOnly?)null));
     }

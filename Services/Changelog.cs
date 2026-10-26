@@ -17,6 +17,14 @@ public static class Changelog
 
     public static readonly IReadOnlyList<Release> Releases =
     [
+        new("1.25", new DateOnly(2026, 10, 26),
+        [
+            "A Health tab, for when the baby is unwell: temperature readings with when they were taken and where, marked high at the NHS's 38°C.",
+            "Diarrhoea is one tap there. It is saved as a poop marked diarrhoea, so it still counts as a dirty nappy on the report and the chart, and any poop can be marked afterwards from its editor.",
+            "Add a medicine from its prescription or label — the dose, how far apart, how many a day — and record each dose as it is given. Before saving, it warns if a dose is closer to another than the label allows, or makes more in 24 hours than it allows.",
+            "Nothing on the page is advice. The one piece of guidance it shows is the NHS's own, quoted: call 111 or your GP urgently for a baby under 3 months at 38°C or more, or 3 to 6 months at 39°C or more."
+        ]),
+
         new("1.24", new DateOnly(2026, 10, 22),
         [
             "The report lists every pumping session in the range — when, how long, how much — under the entries, with the pencil to change one. Its day-by-day table has sleep and pumping columns now too.",

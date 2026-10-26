@@ -18,6 +18,16 @@
         <TimeField Id="start" Label="@(BabyEvent.Lasts(kind) ? "Started" : "Time")"
                    Value="@startText" ValueChanged="v => startText = v" />
 
+        @if (kind == EventKind.Poop)
+        {
+            <div class="field">
+                <div class="choice">
+                    <button type="button" class="@(diarrhoea ? "" : "on")" @onclick="() => diarrhoea = false">Normal</button>
+                    <button type="button" class="@(diarrhoea ? "on" : "")" @onclick="() => diarrhoea = true">Diarrhoea</button>
+                </div>
+            </div>
+        }
+
         @if (BabyEvent.Lasts(kind))
         {
             <TimeField Id="end" Label="@(kind == EventKind.Sleep ? "Woke" : "Stopped")"
@@ -173,6 +183,7 @@
     private int feedMinutes;
     private int initialFeedMinutes;
     private string? notes;
+    private bool diarrhoea;
     private bool confirmDelete;
     private int loadedId = -1;
 
@@ -241,6 +252,7 @@
         feedMinutes = initialFeedMinutes;
 
         notes = Event.Notes;
+        diarrhoea = Event.Diarrhoea;
         confirmDelete = false;
         mediaMessage = null;
         media = [];
@@ -318,6 +330,7 @@
             Milk = kind == EventKind.BottleFeed ? milk : null,
             MilkTime = kind == EventKind.BottleFeed && milk == MilkKind.BreastMilk ? batch : null,
             AmountMl = kind == EventKind.BottleFeed ? amount : null,
+            Diarrhoea = kind == EventKind.Poop && diarrhoea,
             Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim()
         };
 

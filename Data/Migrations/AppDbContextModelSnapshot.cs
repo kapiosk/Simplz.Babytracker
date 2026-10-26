@@ -64,6 +64,9 @@ namespace Simplz.Babytracker.Data.Migrations
                     b.Property<int>("BabyId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("Diarrhoea")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime?>("EndUtc")
                         .HasColumnType("TEXT");
 
@@ -135,6 +138,77 @@ namespace Simplz.Babytracker.Data.Migrations
                     b.HasIndex("BabyEventId");
 
                     b.ToTable("Media");
+                });
+
+            modelBuilder.Entity("Simplz.Babytracker.Data.Medicine", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("AddedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("BabyId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Dose")
+                        .HasMaxLength(60)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly?>("EndsOn")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Finished")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("MaxPerDay")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double?>("MinHoursBetween")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BabyId");
+
+                    b.ToTable("Medicines");
+                });
+
+            modelBuilder.Entity("Simplz.Babytracker.Data.MedicineDose", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Dose")
+                        .HasMaxLength(60)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("GivenUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("MedicineId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MedicineId", "GivenUtc");
+
+                    b.ToTable("MedicineDoses");
                 });
 
             modelBuilder.Entity("Simplz.Babytracker.Data.Milestone", b =>
@@ -215,6 +289,35 @@ namespace Simplz.Babytracker.Data.Migrations
                     b.ToTable("PumpEntries");
                 });
 
+            modelBuilder.Entity("Simplz.Babytracker.Data.TemperatureReading", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("BabyId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double>("Celsius")
+                        .HasColumnType("REAL");
+
+                    b.Property<int?>("Method")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("TakenUtc")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BabyId", "TakenUtc");
+
+                    b.ToTable("Temperatures");
+                });
+
             modelBuilder.Entity("Simplz.Babytracker.Data.BabyEvent", b =>
                 {
                     b.HasOne("Simplz.Babytracker.Data.Baby", null)
@@ -233,6 +336,24 @@ namespace Simplz.Babytracker.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Simplz.Babytracker.Data.Medicine", b =>
+                {
+                    b.HasOne("Simplz.Babytracker.Data.Baby", null)
+                        .WithMany()
+                        .HasForeignKey("BabyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Simplz.Babytracker.Data.MedicineDose", b =>
+                {
+                    b.HasOne("Simplz.Babytracker.Data.Medicine", null)
+                        .WithMany()
+                        .HasForeignKey("MedicineId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Simplz.Babytracker.Data.Milestone", b =>
                 {
                     b.HasOne("Simplz.Babytracker.Data.Baby", null)
@@ -243,6 +364,15 @@ namespace Simplz.Babytracker.Data.Migrations
                 });
 
             modelBuilder.Entity("Simplz.Babytracker.Data.PumpEntry", b =>
+                {
+                    b.HasOne("Simplz.Babytracker.Data.Baby", null)
+                        .WithMany()
+                        .HasForeignKey("BabyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Simplz.Babytracker.Data.TemperatureReading", b =>
                 {
                     b.HasOne("Simplz.Babytracker.Data.Baby", null)
                         .WithMany()

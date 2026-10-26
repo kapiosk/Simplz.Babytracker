@@ -16,6 +16,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     public DbSet<Milestone> Milestones => Set<Milestone>();
 
+    public DbSet<TemperatureReading> Temperatures => Set<TemperatureReading>();
+
+    public DbSet<Medicine> Medicines => Set<Medicine>();
+
+    public DbSet<MedicineDose> MedicineDoses => Set<MedicineDose>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<AppSetting>().HasKey(x => x.Key);
@@ -57,6 +63,38 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasOne<Baby>()
                 .WithMany()
                 .HasForeignKey(x => x.BabyId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TemperatureReading>(e =>
+        {
+            e.HasIndex(x => new { x.BabyId, x.TakenUtc });
+
+            e.HasOne<Baby>()
+                .WithMany()
+                .HasForeignKey(x => x.BabyId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Medicine>(e =>
+        {
+            e.HasIndex(x => x.BabyId);
+
+            e.HasOne<Baby>()
+                .WithMany()
+                .HasForeignKey(x => x.BabyId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<MedicineDose>(e =>
+        {
+            e.HasIndex(x => new { x.MedicineId, x.GivenUtc });
+
+            // A dose belongs to its medicine, and so to the medicine's baby: deleting either
+            // takes the doses with it.
+            e.HasOne<Medicine>()
+                .WithMany()
+                .HasForeignKey(x => x.MedicineId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

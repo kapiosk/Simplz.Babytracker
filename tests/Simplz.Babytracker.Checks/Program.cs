@@ -17,5 +17,6 @@ await StockChecks.RunAsync(h);
 await DisplayChecks.RunAsync(h);
 await DayShapeChecks.RunAsync(h);
 await MilestoneChecks.RunAsync(h);
+await HealthChecks.RunAsync(h);
 
 return h.Report();
