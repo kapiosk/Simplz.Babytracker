@@ -1,7 +1,7 @@
 # Health
 
-The **Health** tab is for when the baby is unwell: temperatures, diarrhoea, and medicines with
-every dose given. It is a record to show the GP, 111 or the pharmacist — when it started, how high
+The **Health** tab is for when the baby is unwell: temperatures, diarrhoea, vomiting, and
+medicines with every dose given. It is a record to show the GP, 111 or the pharmacist — when it started, how high
 it went, what was given and when — not advice about what to do.
 
 ## Temperature
@@ -38,7 +38,19 @@ dirty nappy. So it counts in the nappy totals on the report, appears on the char
 *Poop · diarrhoea* in every list. The report's poop tile says how many of them were diarrhoea.
 
 Any poop can be marked or unmarked afterwards: open it with the pencil and choose **Normal** or
-**Diarrhoea**.
+**Diarrhoea**. On the chart it shows as **D** rather than **+**.
+
+## Vomit
+
+**Vomit** is one tap too, with the same **Undo**. It is for being properly sick — not the milk
+brought back up after a feed, which is **Spit-up** on Track and stays there.
+
+The two are separate kinds and counted separately. On the report a **Vomits** tile appears beside
+the spit-ups whenever the range has any. On the chart a vomit sits in the spit-up column against
+the feed before it, marked **V** rather than **+**, so the paper-chart layout stays the one
+doctors know while still saying which was which.
+
+Anything logged as *Vomit* on Track before version 1.26 was a spit-up, and now reads as one.
 
 ## Medicines
 
@@ -75,8 +87,9 @@ which is rarely what you want.
 
 ## The history
 
-Underneath, everything from the last 30 days in one list, newest first — readings, diarrhoea and
-doses together, so the order of events reads straight down: *38.6, Calpol, diarrhoea, 38.4*. High
+Underneath, everything from the last 30 days in one list, newest first — readings, diarrhoea,
+vomits and doses together, so the order of events reads straight down: *38.6, Calpol, vomit,
+diarrhoea, 38.4*. High
 readings are marked. The pencil on any line edits it.
 
 ## The read-only password

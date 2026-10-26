@@ -23,6 +23,9 @@ tidier than the raw log:
 - **A nappy or a spit-up within 4 hours of a feed is recorded against that feed** — so you can see
   which feed a stool followed, which is usually the question being asked.
 
+Most marks are a `+`. Two get a letter instead, so they stand out when the baby is unwell: **D** in
+the stool column for diarrhoea, and **V** in the spit-up column for a vomit rather than a spit-up.
+
 Days run newest first, and so do the entries inside each day.
 
 With the parent password every cell and every `+` is a button that opens that entry for editing.
@@ -39,8 +42,10 @@ Totals across the top:
 - **Sleep** — total, how many, and the longest single stretch
 - **Bottles** — how many, total millilitres, how long was spent on them, and the split between
   formula and breast milk
-- **Poops**, **Urine**, **Vomits** — how many, and a per-day average when the range is longer than
-  a day
+- **Poops**, **Urine**, **Spit-ups** — how many, and a per-day average when the range is longer than
+  a day. The poop tile also says how many were diarrhoea.
+- **Vomits** — only when there were any in the range, since a tile reading 0 every ordinary week
+  would say nothing
 - **Pumping** — millilitres, how many sessions, and how long they took. Last of the tiles, because
   everything above it is about the baby and this one is not.
 

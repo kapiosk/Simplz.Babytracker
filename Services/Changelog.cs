@@ -17,6 +17,13 @@ public static class Changelog
 
     public static readonly IReadOnlyList<Release> Releases =
     [
+        new("1.26", new DateOnly(2026, 10, 26),
+        [
+            "Vomit on Track is now Spit-up — the milk that comes back up after a feed. Everything logged before reads as a spit-up, which is what it was.",
+            "Being properly sick is Vomit, on the Health tab: one tap, with an Undo, and counted separately. The report shows a Vomits tile whenever there were any.",
+            "On the chart, a vomit sits in the spit-up column marked V, and a diarrhoea poop in the stool column marked D, so both stand out from the plusses."
+        ]),
+
         new("1.25", new DateOnly(2026, 10, 26),
         [
             "A Health tab, for when the baby is unwell: temperature readings with when they were taken and where, marked high at the NHS's 38°C.",

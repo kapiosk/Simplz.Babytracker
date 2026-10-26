@@ -52,6 +52,7 @@ public static class Display
         EventKind.Poop when e.Diarrhoea => "Poop · diarrhoea",
         EventKind.Poop => "Poop",
         EventKind.Urine => "Urine",
+        EventKind.SpitUp => "Spit-up",
         EventKind.Vomit => "Vomit",
         EventKind.Sleep => "Sleep",
         _ => e.Kind.ToString()
@@ -92,6 +93,7 @@ public static class Display
         EventKind.BottleFeed => "Bottle feed",
         EventKind.Poop => "Poop",
         EventKind.Urine => "Urine",
+        EventKind.SpitUp => "Spit-up",
         EventKind.Vomit => "Vomit",
         EventKind.Sleep => "Sleep",
         _ => kind.ToString()
@@ -167,7 +169,8 @@ public static class Display
         EventKind.BottleFeed => "bottle",
         EventKind.Poop => "poop",
         EventKind.Urine => "urine",
-        EventKind.Vomit => "vomit",
+        EventKind.SpitUp => "spitup",
+        EventKind.Vomit => "health",
         EventKind.Sleep => "sleep",
         _ => "other"
     };

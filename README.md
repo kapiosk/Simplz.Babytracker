@@ -1,7 +1,8 @@
 # Simplz.Babytracker
 
 A small Blazor Server PWA for tracking a newborn: breast feeding (start/stop with a live timer),
-bottle feeding (formula or breast milk, with amount), sleep, poops, urine and vomits — plus a report view.
+bottle feeding (formula or breast milk, with amount), sleep, poops, urine and spit-ups — plus a report view,
+and a Health tab for temperatures, diarrhoea, vomiting and medicines.
 More than one baby can be tracked, each with its own log.
 It is behind a password: one for the parents, one that gives a doctor the same views read only.
 Data lives in a single SQLite file, and the whole thing ships as one Docker container.
@@ -18,7 +19,8 @@ passwords, and what to do when something looks stuck. This README is about runni
 - **Bottle** — opens a sheet: breast milk or formula, amount in ml (presets or free text), optional note.
 - **Sleep** — the same: tap to start, tap again when they wake. Starting one ends the other, at
   the moment the new one begins: a baby cannot be feeding and asleep at the same time.
-- **Poop**, **Urine**, **Vomit** — one tap each, logged at the current time.
+- **Poop**, **Urine**, **Spit-up** — one tap each, logged at the current time. (Spit-up was called
+  Vomit until 1.26; being properly sick is now its own kind, logged on Health.)
 
 Nothing has to be logged as it happens. Under the buttons is the recent log; the pencil on any row opens
 an editor where the type, the times, the milk, the amount and the notes can be corrected, or the entry
@@ -56,7 +58,7 @@ what a flex row already is, the colours come from the theme, and nothing has to 
 **Report** (`/report`) — today / 7 days / 30 days / custom range, with:
 
 - totals per type: feed count, total and average feeding time, bottle count and total ml split by milk type,
-  nappy and vomit counts with a per-day average,
+  nappy and spit-up counts with a per-day average, and vomits when there were any,
 - a day-by-day table covering every day of the range,
 - the full list of entries, each editable with the parent password.
 
@@ -64,7 +66,7 @@ Both pages are live: log something on one phone and any other open phone updates
 
 **Health** (`/health`) — for when the baby is unwell. Temperature readings with when and where they
 were taken, marked *high* at the NHS's 38°C; diarrhoea as a poop with a flag, so it still counts as
-a nappy everywhere else; and medicines copied from the label, each dose recorded through a sheet
+a nappy everywhere else; vomiting as its own kind, apart from the everyday spit-ups on Track; and medicines copied from the label, each dose recorded through a sheet
 that warns — before saving — when it breaks the label's own gap or daily limit. Nothing on it is
 advice: the only guidance shown is the NHS's own two urgent cases for babies, quoted and linked.
 See [docs/Health.md](docs/Health.md).

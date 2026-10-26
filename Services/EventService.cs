@@ -300,7 +300,7 @@ public class EventService(IDbContextFactory<AppDbContext> factory, MediaService 
         return new StopResult(StopOutcome.Stopped, elapsed, null);
     }
 
-    /// <summary>Logs a point-in-time event (poop, urine, vomit).</summary>
+    /// <summary>Logs a point-in-time event (poop, urine, spit-up, vomit).</summary>
     /// <param name="diarrhoea">Only meaningful on a poop, and ignored on anything else.</param>
     public async Task<BabyEvent> LogAsync(
         int babyId, EventKind kind, string? notes = null, bool diarrhoea = false, CancellationToken ct = default)

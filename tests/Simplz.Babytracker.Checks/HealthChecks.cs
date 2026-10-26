@@ -1,3 +1,4 @@
+using Simplz.Babytracker.Components;
 using Simplz.Babytracker.Data;
 using Simplz.Babytracker.Services;
 
@@ -12,6 +13,7 @@ internal static class HealthChecks
         DoseRules(h);
         await Storing(h);
         await Diarrhoea(h);
+        await SpitUpAndVomit(h);
     }
 
     private static void Readings(Harness h)
@@ -222,5 +224,37 @@ internal static class HealthChecks
         edited.Diarrhoea = true;
         await h.Events.UpdateAsync(edited);
         h.Check("and the editor can set it back", (await h.EventAsync(loose.Id)).Diarrhoea, true);
+    }
+
+    private static async Task SpitUpAndVomit(Harness h)
+    {
+        h.Section("health: a spit-up is not a vomit");
+        await h.ResetAsync();
+
+        // The rename kept the stored number, so every entry logged as a vomit before 1.26 reads
+        // as a spit-up now — which is what they were.
+        h.Check("a spit-up is stored as the old vomit was", (int)EventKind.SpitUp, 4);
+        h.Check("a vomit is a new value, clashing with nothing", (int)EventKind.Vomit, 6);
+        h.Check("no two kinds share a value",
+            Enum.GetValues<EventKind>().Select(k => (int)k).Distinct().Count(), Enum.GetValues<EventKind>().Length);
+
+        await h.Events.LogAsync(h.BabyId, EventKind.SpitUp);
+        var sick = await h.Events.LogAsync(h.BabyId, EventKind.Vomit);
+        h.Check("they count separately: spit-ups", await h.CountAsync(EventKind.SpitUp), 1);
+        h.Check("and vomits", await h.CountAsync(EventKind.Vomit), 1);
+        h.Check("a spit-up is called one", Display.Label(EventKind.SpitUp), "Spit-up");
+        h.Check("a vomit is called one", Display.Label(sick), "Vomit");
+        h.Check("each has its own icon", Icon.For(EventKind.Vomit) != Icon.For(EventKind.SpitUp), true);
+        h.Check("a vomit is a moment, not something started and stopped", BabyEvent.Lasts(EventKind.Vomit), false);
+
+        var feedAt = DateTime.UtcNow.AddHours(-1);
+        var day = ChartGrouping.Build(
+        [
+            new BabyEvent { Id = 1, Kind = EventKind.BreastFeed, StartUtc = feedAt, EndUtc = feedAt.AddMinutes(20) },
+            new BabyEvent { Id = 2, Kind = EventKind.SpitUp, StartUtc = feedAt.AddMinutes(25) },
+            new BabyEvent { Id = 3, Kind = EventKind.Vomit, StartUtc = feedAt.AddMinutes(40) }
+        ]);
+        var row = day.SelectMany(d => d.Rows).Single();
+        h.Check("on the chart both sit in the one column, against the feed", row.Emesis.Count, 2);
     }
 }

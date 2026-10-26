@@ -52,7 +52,9 @@
 @if (canEdit)
 {
     <div class="actions">
-        <button class="action health" @onclick="NewReading">
+        @* Temperature across the top, being the one that opens a sheet; the two moments sit
+           side by side under it, one tap each like the nappies on Track. *@
+        <button class="action health wide" @onclick="NewReading">
             <span class="ico"><Icon Name="thermometer" /></span>
             <span>Temperature</span>
             <span class="hint">@(latest is null ? "no reading yet" : $"last {Display.Ago(latest.TakenUtc)}")</span>
@@ -61,6 +63,11 @@
             <span class="ico"><Icon Name="poop" /></span>
             <span>Diarrhoea</span>
             <span class="hint">@(lastDiarrhoea is null ? "none recently" : $"last {Display.Ago(lastDiarrhoea.StartUtc)}")</span>
+        </button>
+        <button class="action health" @onclick="LogVomit">
+            <span class="ico"><Icon Name="vomit" /></span>
+            <span>Vomit</span>
+            <span class="hint">@(lastVomit is null ? "none recently" : $"last {Display.Ago(lastVomit.StartUtc)}")</span>
         </button>
     </div>
 }
@@ -199,7 +206,9 @@
     A record to show the GP, 111 or the pharmacist — not advice. The NHS counts 38°C or more as a
     high temperature; anything here marked <em>high</em> is that and nothing more.
     Diarrhoea is logged as a poop, so it is in the nappy counts on
-    <NavLink href="report">the report</NavLink> and <NavLink href="chart">the chart</NavLink> too.
+    <NavLink href="report">the report</NavLink> and <NavLink href="chart">the chart</NavLink> too, marked D;
+    a vomit goes in the chart's spit-up column marked V, and has its own count on the report.
+    Everyday spit-ups after a feed stay on Track.
     If you are worried, <a href="https://111.nhs.uk/" target="_blank" rel="noopener">NHS 111</a> is there for exactly that.
 </p>
 
@@ -253,6 +262,8 @@
     private string? urgentRule;
     private List<BabyEvent> diarrhoea = [];
     private BabyEvent? lastDiarrhoea;
+    private List<BabyEvent> vomits = [];
+    private BabyEvent? lastVomit;
     private List<Medicine> medicines = [];
     private List<Medicine> current = [];
     private List<Medicine> finished = [];
@@ -354,10 +365,11 @@
             ? null
             : HealthService.UrgentAgeRule(latest.Celsius, baby.BornOn, DateOnly.FromDateTime(Display.ToLocal(latest.TakenUtc)));
 
-        diarrhoea = (await Events.GetRangeAsync(baby.Id, since, DateTime.UtcNow.AddDays(1)))
-            .Where(e => e.Kind == EventKind.Poop && e.Diarrhoea)
-            .ToList();
+        var events = await Events.GetRangeAsync(baby.Id, since, DateTime.UtcNow.AddDays(1));
+        diarrhoea = events.Where(e => e.Kind == EventKind.Poop && e.Diarrhoea).ToList();
         lastDiarrhoea = diarrhoea.FirstOrDefault();
+        vomits = events.Where(e => e.Kind == EventKind.Vomit).ToList();
+        lastVomit = vomits.FirstOrDefault();
 
         medicines = await HealthLog.MedicinesAsync(baby.Id);
         var today = DateOnly.FromDateTime(DateTime.Now);
@@ -384,6 +396,10 @@
 
             .. diarrhoea.Select(e => new HistoryItem(
                 $"e{e.Id}", e.StartUtc, "poop", "poop", "Diarrhoea", Stamp(e.StartUtc),
+                e.Notes, false, () => editingEvent = e)),
+
+            .. vomits.Select(e => new HistoryItem(
+                $"e{e.Id}", e.StartUtc, "vomit", "health", "Vomit", Stamp(e.StartUtc),
                 e.Notes, false, () => editingEvent = e)),
 
             .. doses.Where(d => d.GivenUtc >= sinceUtc && byId.ContainsKey(d.MedicineId)).Select(d =>
@@ -473,6 +489,17 @@
 
         var logged = await Events.LogAsync(baby.Id, EventKind.Poop, diarrhoea: true);
         Toast("Diarrhoea logged", seconds: 6, undoing: logged);
+    }
+
+    private async Task LogVomit()
+    {
+        if (!canEdit || baby is null)
+        {
+            return;
+        }
+
+        var logged = await Events.LogAsync(baby.Id, EventKind.Vomit);
+        Toast("Vomit logged", seconds: 6, undoing: logged);
     }
 
     private async Task Undo()

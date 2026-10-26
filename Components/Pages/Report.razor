@@ -44,11 +44,22 @@
         <div class="v">@Count(EventKind.Urine)</div>
         <div class="x">@PerDay(Count(EventKind.Urine))</div>
     </div>
-    <div class="stat vomit">
-        <div class="k"><Icon Name="vomit" /> Vomits</div>
-        <div class="v">@Count(EventKind.Vomit)</div>
-        <div class="x">@PerDay(Count(EventKind.Vomit))</div>
+    <div class="stat spitup">
+        <div class="k"><Icon Name="spitup" /> Spit-ups</div>
+        <div class="v">@Count(EventKind.SpitUp)</div>
+        <div class="x">@PerDay(Count(EventKind.SpitUp))</div>
     </div>
+
+    @* Only when there were any. A tile reading 0 every ordinary week says nothing, and its
+       appearing at all is the signal on the week that has them. *@
+    @if (Count(EventKind.Vomit) > 0)
+    {
+        <div class="stat health">
+            <div class="k"><Icon Name="vomit" /> Vomits</div>
+            <div class="v">@Count(EventKind.Vomit)</div>
+            <div class="x">@PerDay(Count(EventKind.Vomit))</div>
+        </div>
+    }
 
     @* Last of the tiles on purpose: everything above it is about the baby, and this one is not.
        It borrows the breast colour, as pumping does everywhere else in the app. *@
@@ -81,7 +92,7 @@
                     <th>Time</th>
                     <th class="poop"><Icon Name="poop" /></th>
                     <th class="urine"><Icon Name="urine" /></th>
-                    <th class="vomit"><Icon Name="vomit" /></th>
+                    <th class="spitup"><Icon Name="spitup" /></th>
                     @* The same order as the tiles above, pumping last for the same reason. *@
                     <th class="breast"><Icon Name="pump" /></th>
                     <th>ml</th>
@@ -101,7 +112,7 @@
                         <td>@(day.BottleTime > TimeSpan.Zero ? Display.Duration(day.BottleTime) : "–")</td>
                         <td>@Num(day.Poop)</td>
                         <td>@Num(day.Urine)</td>
-                        <td>@Num(day.Vomit)</td>
+                        <td>@Num(day.SpitUp)</td>
                         <td>@Num(day.Pumps)</td>
                         <td>@(day.PumpMl > 0 ? day.PumpMl.ToString() : "–")</td>
                         <td>@(day.PumpTime > TimeSpan.Zero ? Display.Duration(day.PumpTime) : "–")</td>
@@ -275,7 +286,7 @@
                        .Aggregate(TimeSpan.Zero, (sum, e) => sum + (e.Duration ?? TimeSpan.Zero)),
                 entries.Count(e => e.Kind == EventKind.Poop),
                 entries.Count(e => e.Kind == EventKind.Urine),
-                entries.Count(e => e.Kind == EventKind.Vomit),
+                entries.Count(e => e.Kind == EventKind.SpitUp),
                 sessions.Count,
                 sessions.Sum(e => e.AmountMl ?? 0),
                 sessions.Aggregate(TimeSpan.Zero, (sum, e) => sum + (e.Duration ?? TimeSpan.Zero))));
@@ -397,6 +408,6 @@
     private record DayRow(
         DateTime Date, int Breast, TimeSpan BreastTime, TimeSpan Sleep,
         int Bottle, int Ml, TimeSpan BottleTime,
-        int Poop, int Urine, int Vomit,
+        int Poop, int Urine, int SpitUp,
         int Pumps, int PumpMl, TimeSpan PumpTime);
 }
