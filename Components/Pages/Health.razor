@@ -64,7 +64,7 @@
             <span>Diarrhoea</span>
             <span class="hint">@(lastDiarrhoea is null ? "none recently" : $"last {Display.Ago(lastDiarrhoea.StartUtc)}")</span>
         </button>
-        <button class="action health" @onclick="LogVomit">
+        <button class="action vomit" @onclick="LogVomit">
             <span class="ico"><Icon Name="vomit" /></span>
             <span>Vomit</span>
             <span class="hint">@(lastVomit is null ? "none recently" : $"last {Display.Ago(lastVomit.StartUtc)}")</span>
@@ -399,7 +399,7 @@
                 e.Notes, false, () => editingEvent = e)),
 
             .. vomits.Select(e => new HistoryItem(
-                $"e{e.Id}", e.StartUtc, "vomit", "health", "Vomit", Stamp(e.StartUtc),
+                $"e{e.Id}", e.StartUtc, "vomit", "vomit", "Vomit", Stamp(e.StartUtc),
                 e.Notes, false, () => editingEvent = e)),
 
             .. doses.Where(d => d.GivenUtc >= sinceUtc && byId.ContainsKey(d.MedicineId)).Select(d =>

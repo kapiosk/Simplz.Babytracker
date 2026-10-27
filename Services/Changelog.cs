@@ -17,6 +17,11 @@ public static class Changelog
 
     public static readonly IReadOnlyList<Release> Releases =
     [
+        new("1.27", new DateOnly(2026, 10, 27),
+        [
+            "Vomit has its green back, and Spit-up is a slate grey — chosen to stay easy to tell from the brown Poop button beside it."
+        ]),
+
         new("1.26", new DateOnly(2026, 10, 26),
         [
             "Vomit on Track is now Spit-up — the milk that comes back up after a feed. Everything logged before reads as a spit-up, which is what it was.",
