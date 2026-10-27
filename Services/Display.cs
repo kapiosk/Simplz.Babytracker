@@ -170,7 +170,7 @@ public static class Display
         EventKind.Poop => "poop",
         EventKind.Urine => "urine",
         EventKind.SpitUp => "spitup",
-        EventKind.Vomit => "health",
+        EventKind.Vomit => "vomit",
         EventKind.Sleep => "sleep",
         _ => "other"
     };

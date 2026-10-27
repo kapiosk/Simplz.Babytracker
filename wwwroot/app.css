@@ -15,7 +15,14 @@
     --bottle: #3f8fd8;
     --poop: #9a6a3c;
     --urine: #d9a521;
-    --spitup: #58a55c;
+    --vomit: #58a55c;
+
+    /* Slate rather than a warm "milky" grey: measured beside the poop brown it sits next to on
+       Track, slate keeps ΔE 10.8 for a deuteranope where the warm greys fell to 9 against the
+       brown and 5.3 against the vomit green. 3.7:1 on white and 4.5:1 on the dark card, so the
+       icon clears the 3:1 it needs, and it is bluer than --text-dim, so it reads as a colour
+       chosen rather than a control switched off. Same value in both themes, like the rest. */
+    --spitup: #7d8590;
     --sleep: #5b6bbf;
 
     --radius: 18px;
@@ -130,7 +137,7 @@ a { color: var(--accent); }
 /* A recorded one keeps its text at full strength — a milestone reached is not spent, and
    greying it out would read as crossing it off a list, which this deliberately is not. */
 .guide .name.done { color: var(--text); }
-.guide .done-mark { color: var(--spitup); font-size: 1.1rem; display: inline-flex; align-items: center; }
+.guide .done-mark { color: var(--vomit); font-size: 1.1rem; display: inline-flex; align-items: center; }
 .guide .done-mark .icon { width: 1.15rem; height: 1.15rem; }
 
 .event .btn.small { flex: none; align-self: center; }
@@ -182,7 +189,8 @@ a { color: var(--accent); }
 .ico.poop,   .action.poop .ico   { color: var(--poop); }
 .ico.urine,  .action.urine .ico  { color: var(--urine); }
 .ico.spitup, .action.spitup .ico { color: var(--spitup); }
-.ico.health, .action.health .ico { color: var(--accent); }
+.ico.vomit,  .action.vomit .ico  { color: var(--vomit); }
+.action.health .ico { color: var(--accent); }
 .ico.sleep,  .action.sleep .ico  { color: var(--sleep); }
 .action.running .ico { color: #fff; }
 
@@ -194,7 +202,7 @@ a { color: var(--accent); }
 .stat.poop .k .icon,   table.grid th.poop .icon   { color: var(--poop); }
 .stat.urine .k .icon,  table.grid th.urine .icon  { color: var(--urine); }
 .stat.spitup .k .icon, table.grid th.spitup .icon { color: var(--spitup); }
-.stat.health .k .icon { color: var(--accent); }
+.stat.vomit .k .icon,  table.grid th.vomit .icon  { color: var(--vomit); }
 .stat.sleep .k .icon,  table.grid th.sleep .icon  { color: var(--sleep); }
 table.grid th .icon { margin-left: auto; }
 
@@ -240,6 +248,7 @@ table.grid th .icon { margin-left: auto; }
 .action.poop   { border-left: 8px solid var(--poop); }
 .action.urine  { border-left: 8px solid var(--urine); }
 .action.spitup { border-left: 8px solid var(--spitup); }
+.action.vomit  { border-left: 8px solid var(--vomit); }
 .action.sleep  { border-left: 8px solid var(--sleep); }
 
 .action.running { color: #fff; }
@@ -443,7 +452,7 @@ table.grid th .icon { margin-left: auto; }
 .stat.poop   { border-left-color: var(--poop); }
 .stat.urine  { border-left-color: var(--urine); }
 .stat.spitup { border-left-color: var(--spitup); }
-.stat.health { border-left-color: var(--accent); }
+.stat.vomit  { border-left-color: var(--vomit); }
 .stat.sleep  { border-left-color: var(--sleep); }
 
 .stat .k { color: var(--text-dim); font-size: .8rem; font-weight: 600; }
@@ -1224,7 +1233,7 @@ body { padding-top: var(--circuit-banner-h, 0px); }
 
 /* The headline figure on its own card. Pumped milk is breast milk, so it borrows the breast
    colour rather than introducing one: the palette already has six kind colours, teal sits too
-   close to the spit-up green to be worth adding, and this page shows one measure at a time so
+   close to the vomit green to be worth adding, and this page shows one measure at a time so
    nothing here ever has to be told apart by colour. */
 .stock { border-left: 8px solid var(--breast); }
 
@@ -1274,7 +1283,7 @@ body { padding-top: var(--circuit-banner-h, 0px); }
 /* The two figures stand out by weight, not by colour. Colouring them was the first instinct —
    green in, pink out — but at this size (12.5px) the kind colours come to 3.0:1 and 3.3:1 on a
    light card against the 4.5 small text needs, and the plus and minus signs carry the direction
-   perfectly well on their own. Reaching for --spitup to mean "added" was a coincidence of hue
+   perfectly well on their own. Reaching for --vomit to mean "added" was a coincidence of hue
    rather than a meaning, too. */
 .stock-ledger .up,
 .stock-ledger .down { color: var(--text); font-weight: 700; }
