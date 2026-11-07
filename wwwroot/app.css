@@ -813,6 +813,26 @@ a.btn { display: inline-block; text-decoration: none; }
 .running-note .ico.breast { color: var(--breast); font-size: 1.4rem; display: inline-flex; }
 .running-note .ico .icon { width: 1.4rem; height: 1.4rem; }
 
+.sign-out { margin-top: 1.5rem; }
+
+/* ---------- keep the screen on ---------- */
+
+/* Not shown until wake-lock.js has said the phone supports it: a button that can do nothing is
+   worse than none. By attribute rather than [hidden], which .icon-btn's display would override. */
+.wake-btn { display: none; }
+:root[data-wake="off"] .wake-btn,
+:root[data-wake="on"] .wake-btn,
+:root[data-wake="waiting"] .wake-btn { display: flex; }
+
+/* Off: a plain phone. On: lit, in the accent, with its rays. Waiting — wanted, but the phone
+   let go when the page was hidden, and the next tap takes it back — the accent without the
+   rays, so it reads as "about to be" rather than "is". The pressed state is also on
+   aria-pressed, so none of this rests on colour alone. */
+.wake-btn .rays { opacity: 0; }
+:root[data-wake="on"] .wake-btn { color: var(--accent); background: var(--surface-2); }
+:root[data-wake="on"] .wake-btn .rays { opacity: 1; }
+:root[data-wake="waiting"] .wake-btn { color: var(--accent); }
+
 /* ---------- circuit watchdog ---------- */
 
 .header-actions {

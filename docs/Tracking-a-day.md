@@ -65,6 +65,20 @@ A bottle is listed against the time it **finished**, not the time it started —
 stopped drinking is the moment you are usually looking for. Everything else is listed by when it
 began. A bottle saved in one tap ends where it starts, so there is no difference for those.
 
+## Keeping the screen on
+
+The phone icon at the top, beside Reload, keeps the screen from going dark — for a feed with the
+timer showing and no hand free to keep waking it. It lights up, with rays, while it is holding the
+screen on. Tap it again to let the screen sleep as usual.
+
+- **It is remembered per phone**, so the other phone can be set the other way.
+- **Locking the phone or switching to another app lets the screen go** — every phone insists on
+  that. Coming back to the app takes it up again; if the phone wants a tap first, the icon shows
+  lit but without its rays until you touch the screen anywhere.
+- **It only appears on phones that support it,** and only with the parent password.
+- If it lights up and the screen still sleeps, the phone's software is out of date — some older
+  versions of iOS accepted it from a home-screen app and then ignored it. Updating iOS fixes that.
+
 ## The three that are moments
 
 **Poop**, **Urine** and **Spit-up** are logged at the time you tap them: a single tap and nothing

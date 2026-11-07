@@ -22,6 +22,9 @@ passwords, and what to do when something looks stuck. This README is about runni
 - **Poop**, **Urine**, **Spit-up** — one tap each, logged at the current time. (Spit-up was called
   Vomit until 1.26; being properly sick is now its own kind, logged on Health.)
 
+A phone icon in the header keeps the screen on while the app is showing (the Screen Wake Lock API,
+in `wwwroot/wake-lock.js`), remembered per device and only shown where the browser supports it.
+
 Nothing has to be logged as it happens. Under the buttons is the recent log; the pencil on any row opens
 an editor where the type, the times, the milk, the amount and the notes can be corrected, or the entry
 deleted. Every time field has −1h/−15m/−5m/+5m/+15m/+1h nudges and a *Now* button next to the picker, so

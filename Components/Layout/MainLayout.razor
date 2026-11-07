@@ -8,7 +8,9 @@
            Babies screen: milestones are looked at now and then rather than every feed, and the
            nav's sixth place went to Health, which is needed in a hurry when it is needed. *@
         <div class="sub">
-            @DateTime.Now.ToString("dddd d MMMM")
+            @* Short forms since the keep-awake button joined the header: "Saturday 7 November ·
+               10 weeks" was 188px against about 155 of room at 375 wide, and wrapped. *@
+            @DateTime.Now.ToString("ddd d MMM")
             @if (selected?.BornOn is { } born)
             {
                 <text> · </text><NavLink class="age" href="milestones">@Display.Age(born, DateOnly.FromDateTime(DateTime.Now))</NavLink>
@@ -25,6 +27,23 @@
             </Authorized>
         </AuthorizeView>
 
+        @* Keep the screen on. Plain JavaScript like the Reload button beside it — see
+           wwwroot/wake-lock.js — and only shown where the phone supports it, which the stylesheet
+           decides from the data-wake that script puts on <html>. For the parent password only:
+           it is for a feed in progress, and the read-only header already has its badge in the
+           room the button would take. *@
+        <AuthorizeView>
+            <Authorized>
+                @if (context.User.IsInRole(Roles.Parent))
+                {
+                    <button type="button" class="icon-btn wake-btn" data-wake-toggle
+                            title="Keep the screen on" aria-label="Keep the screen on" aria-pressed="false">
+                        <span class="ico"><Icon Name="awake" /></span>
+                    </button>
+                }
+            </Authorized>
+        </AuthorizeView>
+
         @* Deliberately not a Blazor @onclick: this button is here for the times the circuit
            that would carry that click is the thing that is broken. wwwroot/circuit-watchdog.js
            handles data-reload in plain JavaScript. *@
@@ -33,16 +52,14 @@
             <span class="ico"><Icon Name="refresh" /></span>
         </button>
 
+        @* Sign out lives on Babies now. It was a word here, and the keep-awake button needed
+           its 56px more than a family phone needs signing out of at a glance. *@
         <AuthorizeView>
             <Authorized>
-                <form class="who" action="logout" method="post">
-                    <AntiforgeryToken />
-                    @if (!context.User.IsInRole(Roles.Parent))
-                    {
-                        <span class="role ro" title="This password cannot change anything">Read only</span>
-                    }
-                    <button type="submit" class="link-btn">Sign out</button>
-                </form>
+                @if (!context.User.IsInRole(Roles.Parent))
+                {
+                    <span class="who"><span class="role ro" title="This password cannot change anything">Read only</span></span>
+                }
             </Authorized>
         </AuthorizeView>
     </div>
