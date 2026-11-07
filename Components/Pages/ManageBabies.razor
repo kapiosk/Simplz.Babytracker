@@ -83,6 +83,13 @@
     </div>
 }
 
+@* For both passwords, so the read-only one can leave too. An ordinary form post rather than
+   anything Blazor: it works with the circuit down, and the server ends the session either way. *@
+<form action="logout" method="post" class="sign-out">
+    <AntiforgeryToken />
+    <button type="submit" class="btn block subtle">Sign out of this phone</button>
+</form>
+
 @code {
     [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
 

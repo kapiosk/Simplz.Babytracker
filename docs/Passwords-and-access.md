@@ -34,5 +34,8 @@ password is to lock somebody out.
 
 ## Staying signed in
 
+To sign this phone out, it is **Sign out of this phone** at the bottom of **Babies** (the person
+icon in the header) — for either password.
+
 The sign-in lasts six months and renews itself as you use it, so a phone with the app on its home
 screen is not forever asking. Restarting or rebuilding the server does not sign anybody out.

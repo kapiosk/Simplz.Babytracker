@@ -68,6 +68,14 @@
             <path d="M15.4 6.6h5.1v5.1" />
             break;
 
+        case "awake":
+            @* A phone with light coming off it. The rays are their own path so the stylesheet can
+               show them only while the screen is actually being kept on. *@
+            <rect x="8" y="3.5" width="8" height="17" rx="2.2" />
+            <path d="M11 17.4h2" />
+            <path class="rays" d="M5 8.6 3.4 7.6M4.6 12H2.8M5 15.4l-1.6 1M19 8.6l1.6-1M19.4 12h1.8M19 15.4l1.6 1" />
+            break;
+
         case "health":
             @* A cross: the tab as a whole, which is temperatures and medicines both. *@
             <path d="M9.5 4h5v5.5H20v5h-5.5V20h-5v-5.5H4v-5h5.5z" />

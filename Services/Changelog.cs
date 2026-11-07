@@ -17,6 +17,14 @@ public static class Changelog
 
     public static readonly IReadOnlyList<Release> Releases =
     [
+        new("1.28", new DateOnly(2026, 11, 7),
+        [
+            "A phone button at the top keeps the screen on — for a feed with the timer showing and no hand free to keep waking it. Tap it again to let the screen sleep as usual.",
+            "It is remembered per phone. Locking the phone or switching apps lets the screen go, as it must; coming back to the app takes it up again.",
+            "It only appears on phones that support it.",
+            "To make room, Sign out has moved to the bottom of Babies (the person icon), and the date at the top is shorter."
+        ]),
+
         new("1.27", new DateOnly(2026, 10, 27),
         [
             "Vomit has its green back, and Spit-up is a slate grey — chosen to stay easy to tell from the brown Poop button beside it."
