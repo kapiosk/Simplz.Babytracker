@@ -1,0 +1,85 @@
+# Builds the image and publishes it to GitHub's container registry, so it can be run without
+# building it: ghcr.io/kapiosk/simplz.babytracker
+#
+# Both architectures, as one name: amd64 for most servers, arm64 for a Raspberry Pi. The
+# Dockerfile cross-compiles rather than running the SDK under emulation; QEMU is only here for
+# the few commands of the runtime stage.
+#
+# Tags, on every push to main:
+#   latest       — whatever main is
+#   1.28 etc.    — the version at the top of Services/Changelog.cs, the same one /healthz reports
+#   sha-abc1234  — the exact commit, for going back to
+#
+# A pull request builds both images to prove they still build, and publishes nothing.
+
+name: Container image
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: container-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The registry wants it lower case; the repository's own name is not.
+  IMAGE: ghcr.io/kapiosk/simplz.babytracker
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read the version from the changelog
+        id: version
+        run: |
+          version="$(sed -n 's/.*new("\([^"]*\)".*/\1/p' Services/Changelog.cs | head -1)"
+          if [ -z "$version" ]; then
+            echo "could not read a version from Services/Changelog.cs" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-qemu-action@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Sign in to the registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Work out the tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ steps.version.outputs.version }},enable={{is_default_branch}}
+            type=sha,prefix=sha-,format=short
+          labels: |
+            org.opencontainers.image.title=Baby Tracker
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+
+      - name: Build, and publish unless this is a pull request
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

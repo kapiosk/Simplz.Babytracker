@@ -157,7 +157,33 @@ including the one doing the asking, worthless.
 
 ## Running it
 
-### Docker (how it is meant to be deployed)
+### The published image, without building anything
+
+Every push to `main` publishes a ready-built image for both amd64 and arm64 (a Raspberry Pi):
+
+```bash
+docker run -d --name babytracker -p 4549:8080 \
+  -e TZ=Europe/London \
+  -e Auth__ParentPassword=choose-one -e Auth__DoctorPassword=choose-another \
+  -v babytracker-data:/data \
+  ghcr.io/kapiosk/simplz.babytracker:latest
+```
+
+Or with compose: in `compose.yaml`, replace `build: .` and the `image:` line under it with
+`image: ghcr.io/kapiosk/simplz.babytracker:latest`, then `docker compose up -d`.
+
+**Set both passwords.** Without them it starts with `parent` and `doctor`, which everyone who has
+read this README knows. They can also be changed later from inside the app.
+
+Tags: `latest` is whatever `main` is; `1.28` and so on is a released version, the same number the
+app reports at `/healthz` and on *What's new*; `sha-abc1234` is one exact commit. Pin a version if
+you would rather update on purpose. The image holds the app and nothing else — your data lives in
+the `/data` volume, never in the image.
+
+It is built by `.github/workflows/container.yml`. The Dockerfile cross-compiles, so the arm64
+image is built natively on GitHub's amd64 runners rather than under emulation.
+
+### Docker, building it yourself (how it is meant to be deployed)
 
 ```bash
 docker compose up -d --build

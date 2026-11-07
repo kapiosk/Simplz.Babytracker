@@ -1,5 +1,8 @@
 services:
   babytracker:
+    # Built from this folder. To use the published image instead and skip the build, replace
+    # these two lines with:
+    #   image: ghcr.io/kapiosk/simplz.babytracker:latest
     build: .
     image: simplz-babytracker
     container_name: babytracker
@@ -10,6 +13,8 @@ services:
       # Set this to your own timezone: it decides which day an entry is grouped under.
       TZ: Europe/Athens
       # The two passwords. "parent" can log and edit entries, "doctor" only reads.
+      # CHANGE BOTH before the app is reachable by anyone else: these are the defaults everyone
+      # who has read this file knows. They can also be changed later from inside the app.
       Auth__ParentPassword: parent
       Auth__DoctorPassword: doctor
     volumes:
